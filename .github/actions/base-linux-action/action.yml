@@ -8,25 +8,25 @@ runs:
   using: 'composite'
   steps:
     - name: Parse secrets
+      shell: bash
       run: |
         echo "${{ inputs.SECRETS_JSON }}" > secrets.json
-        jq -r 'to_entries | .[] | "export \(.key|ascii_upcase)=\(.value)"' secrets.json > set_env_vars.sh
+        jq -r 'to_entries | .[] | "export \(.key|ascii_upcase)=\(.value|@sh)"' secrets.json > set_env_vars.sh
         source set_env_vars.sh
         # Save environment variables for the next steps
         echo "source $PWD/set_env_vars.sh" >> $GITHUB_ENV
-      shell: bash
-    
+
     - name: Checkout code
-      run: git checkout ${{ github.sha }}
       shell: bash
+      run: git checkout ${{ github.sha }}
 
     # - name: Set up Node.js
+    #   shell: bash
     #   run: |
     #     curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
     #     sudo apt-get install -y nodejs
-    #   shell: bash
 
     - name: Debug
+      shell: bash
       run: |
         echo "HOUSE: $HOUSE"
-      shell: bash
