@@ -1,9 +1,6 @@
 name: 'Base Linux Action'
 description: 'An example action to use in GitHub workflows'
-inputs:
-  SECRETS_JSON:
-    description: 'All secrets as a JSON string'
-    required: true
+
 runs:
   using: 'composite'
     - name: Checkout code
