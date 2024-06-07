@@ -3,6 +3,7 @@ description: 'An example action to use in GitHub workflows'
 
 runs:
   using: 'composite'
+  steps:
     # - name: Checkout code
     #   shell: bash
     #   run: git checkout ${{ github.sha }}
@@ -17,5 +18,5 @@ runs:
       shell: bash
       run: |
         echo "HOUSE: $HOUSE"
-        
+
 # echo "github.event.repository.name: ${{ github.event.repository.name }}"
