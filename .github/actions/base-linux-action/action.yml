@@ -1,5 +1,5 @@
-name: 'Repo1 Action'
-description: 'Composite action for Repo1'
+name: 'Base Linux Action'
+description: 'An example action to use in GitHub workflows'
 runs:
   using: 'composite'
   steps:
@@ -7,12 +7,12 @@ runs:
       run: git checkout ${{ github.sha }}
       shell: bash
 
-    - name: Set up Node.js
-      run: |
-        curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-        sudo apt-get install -y nodejs
-      shell: bash
+    # - name: Set up Node.js
+    #   run: |
+    #     curl -sL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    #     sudo apt-get install -y nodejs
+    #   shell: bash
 
     - name: Debug
-      run: echo "${{ secrets.HOUSE }}"
+      run: echo "$HOUSE"
       shell: bash
