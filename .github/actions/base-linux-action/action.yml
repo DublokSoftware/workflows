@@ -3,9 +3,9 @@ description: 'An example action to use in GitHub workflows'
 
 runs:
   using: 'composite'
-    - name: Checkout code
-      shell: bash
-      run: git checkout ${{ github.sha }}
+    # - name: Checkout code
+    #   shell: bash
+    #   run: git checkout ${{ github.sha }}
 
     # - name: Set up Node.js
     #   shell: bash
@@ -17,4 +17,5 @@ runs:
       shell: bash
       run: |
         echo "HOUSE: $HOUSE"
-        echo "github.event.repository.name: ${{ github.event.repository.name }}"
+        
+# echo "github.event.repository.name: ${{ github.event.repository.name }}"
