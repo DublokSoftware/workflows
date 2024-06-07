@@ -1,16 +1,20 @@
 name: 'Base Linux Action'
 description: 'An example action to use in GitHub workflows'
+inputs:
+  SECRETS_JSON:
+    description: 'All secrets as a JSON string'
+    required: true
 runs:
   using: 'composite'
   steps:
     - name: Parse secrets
       run: |
-      echo "$SECRETS_JSON" > secrets.json
-      jq -r 'to_entries | .[] | "export \(.key|ascii_upcase)=\(.value)"' secrets.json > set_env_vars.sh
-      source set_env_vars.sh
-      # Save environment variables for the next steps
-      echo "source $PWD/set_env_vars.sh" >> $GITHUB_ENV
-    shell: bash
+        echo "${{ inputs.SECRETS_JSON }}" > secrets.json
+        jq -r 'to_entries | .[] | "export \(.key|ascii_upcase)=\(.value)"' secrets.json > set_env_vars.sh
+        source set_env_vars.sh
+        # Save environment variables for the next steps
+        echo "source $PWD/set_env_vars.sh" >> $GITHUB_ENV
+      shell: bash
     
     - name: Checkout code
       run: git checkout ${{ github.sha }}
