@@ -55,11 +55,8 @@ def main():
             'Accept': 'application/vnd.github.v3+json'
         }
 
-        # Get existing version file if it exists
-        # Use branch name without 'v' prefix for the version file
-        branch_for_file = branch.replace('v', '', 1) if branch.startswith('v') else branch
-        filename = f".version_{branch_for_file}.json"
-        
+        # Use full branch name for the version file
+        filename = f".version_{branch}.json"
         print(f"Looking for version file: {filename}")
         
         url = f"https://api.github.com/repos/{github_repo}/contents/{filename}"
@@ -69,9 +66,11 @@ def main():
             content = json.loads(base64.b64decode(response.json()['content']))
             build_number = content['build_number'] + 1
             sha = response.json()['sha']
+            print(f"Found existing version file. Current build number: {content['build_number']}")
         else:
             build_number = 1
             sha = None
+            print("No existing version file found. Starting with build number 1")
 
         # Generate version information
         full_version = f"{version_part}.{build_number}{suffix}"
@@ -103,6 +102,8 @@ def main():
             print(f"Error updating file: {response.status_code}")
             print(response.text)
             sys.exit(1)
+
+        print(f"Successfully updated {filename}")
 
         # Set GitHub Actions outputs
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
