@@ -47,9 +47,23 @@ jobs:
       # Move workflow files to correct location
       - name: Setup workflow files
         run: |
+          # Debug: List contents of workflow repo
+          echo "Contents of .github/workflows-repo:"
+          ls -la .github/workflows-repo
+          echo "Contents of .github/workflows-repo/.github/workflows:"
+          ls -la .github/workflows-repo/.github/workflows
+          
+          # Create target directory
           mkdir -p .github/workflows/build-and-push
-          mv .github/workflows-repo/.github/workflows/build-and-push/* .github/workflows/build-and-push/
-
+          
+          # Move files with error handling
+          if [ -d ".github/workflows-repo/.github/workflows/build-and-push" ]; then
+            mv .github/workflows-repo/.github/workflows/build-and-push/* .github/workflows/build-and-push/
+          else
+            echo "Source directory not found!"
+            exit 1
+          fi
+          
       - name: Update version
         id: version
         env:
