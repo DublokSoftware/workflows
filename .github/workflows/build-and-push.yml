@@ -37,10 +37,18 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dubloksoftware/workflows
+          ref: main
+          path: .github/workflows-repo
 
       # Then checkout the caller's repository
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Move workflow files to correct location
+      - name: Setup workflow files
+        run: |
+          mkdir -p .github/workflows/build-and-push
+          mv .github/workflows-repo/.github/workflows/build-and-push/* .github/workflows/build-and-push/
 
       - name: Update version
         id: version
