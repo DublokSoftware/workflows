@@ -6,19 +6,15 @@ on:
       username:
         required: true
         type: string
+    secrets:
+      token:
+        required: true
 
 jobs:
   reusable_job:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.token }}
       - run: echo "Hello ${{ inputs.username }}"
-
-# Caller workflow (use.yml)
-name: Caller workflow
-on: [push]
-jobs:
-  call_reusable:
-    uses: dubloksoftware/workflows/.github/workflows/reusable.yml@main
-    with:
-      username: "John"
