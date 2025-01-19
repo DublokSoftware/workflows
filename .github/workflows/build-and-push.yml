@@ -129,6 +129,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_VERSION: ${{ steps.version.outputs.full_version }}
+          IMAGE_NAME: ${{ inputs.image_name }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
