@@ -166,7 +166,7 @@ jobs:
           
           echo "Uploading release assets for version $VERSION"
           gh release upload "$VERSION" \
-            "${{ inputs.image_name }}.tar" \
+            "../${{ inputs.image_name }}.tar" \
             ".sbom/sbom.json" \
             ".sbom/sbom.txt" \
             "vulnerability_report.txt"
