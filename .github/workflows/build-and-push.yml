@@ -37,7 +37,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: dubloksoftware/workflows
-          path: .github/workflows
 
       # Then checkout the caller's repository
       - name: Checkout repository
@@ -90,7 +89,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ inputs.context_path }}
+          context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
