@@ -125,6 +125,7 @@ jobs:
           docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
 
       - name: Generate SBOM
+        working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_VERSION: ${{ steps.version.outputs.full_version }}
@@ -133,6 +134,7 @@ jobs:
           .github/workflows/build-and-push/generate_sbom.py
 
       - name: Generate Vulnerability Report
+        working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_VERSION: ${{ steps.version.outputs.full_version }}
@@ -142,6 +144,7 @@ jobs:
 
       - name: Create Release
         id: release
+        working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
