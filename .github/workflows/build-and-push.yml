@@ -61,6 +61,7 @@ jobs:
           pip install requests
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
+          
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
