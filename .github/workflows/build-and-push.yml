@@ -32,47 +32,36 @@ jobs:
       contents: write
       packages: write
     steps:
-      # First checkout the workflow repository to get the Python scripts
+      # First checkout the caller's repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      # Then checkout the workflow repository
       - name: Checkout workflow repository
         uses: actions/checkout@v4
         with:
           repository: dubloksoftware/workflows
           ref: main
-          path: .github/workflows-repo
+          path: workflows
 
-      # Then checkout the caller's repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      # Move workflow files to correct location
       - name: Setup workflow files
         run: |
-          # Debug: List contents of workflow repo
-          echo "Contents of .github/workflows-repo:"
-          ls -la .github/workflows-repo
-          echo "Contents of .github/workflows-repo/.github/workflows:"
-          ls -la .github/workflows-repo/.github/workflows
-          
-          # Create target directory
-          mkdir -p .github/workflows/build-and-push
-          
-          # Move files with error handling
-          if [ -d ".github/workflows-repo/.github/workflows/build-and-push" ]; then
-            mv .github/workflows-repo/.github/workflows/build-and-push/* .github/workflows/build-and-push/
-          else
-            echo "Source directory not found!"
-            exit 1
-          fi
-          
+          mkdir -p repo/.github/workflows/build-and-push
+          cp -r workflows/.github/workflows/build-and-push/* repo/.github/workflows/build-and-push/
+          cd repo
+
+      # Update all subsequent steps to work from the repo directory
       - name: Update version
         id: version
+        working-directory: repo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pip install requests
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
