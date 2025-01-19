@@ -62,120 +62,120 @@ jobs:
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
           
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+      # - name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      # - name: Set up Docker Buildx
+      #   uses: docker/setup-buildx-action@v3
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
+      # - name: Log in to Docker Hub
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_TOKEN }}
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Log in to GitHub Container Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Generate Docker Tags
-        id: meta
-        run: |
-          # Parse tags JSON into Docker format
-          TAGS_JSON='${{ steps.version.outputs.tags }}'
-          # Convert repository owner to lowercase
-          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          # Generate Docker Hub tags
-          DOCKERHUB_TAGS=$(echo "$TAGS_JSON" | jq -r '.[] | "${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:" + .')
-          # Generate GitHub Container Registry tags
-          GHCR_TAGS=$(echo "$TAGS_JSON" | jq -r '.[] | "ghcr.io/'"${REPO_OWNER}"'/${{ inputs.image_name }}:" + .')
-          # Combine all tags into a comma-separated list
-          ALL_TAGS=$(echo -e "${DOCKERHUB_TAGS}\n${GHCR_TAGS}" | paste -sd "," -)
-          # Set output
-          echo "tags=${ALL_TAGS}" >> $GITHUB_OUTPUT
+      # - name: Generate Docker Tags
+      #   id: meta
+      #   run: |
+      #     # Parse tags JSON into Docker format
+      #     TAGS_JSON='${{ steps.version.outputs.tags }}'
+      #     # Convert repository owner to lowercase
+      #     REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+      #     # Generate Docker Hub tags
+      #     DOCKERHUB_TAGS=$(echo "$TAGS_JSON" | jq -r '.[] | "${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:" + .')
+      #     # Generate GitHub Container Registry tags
+      #     GHCR_TAGS=$(echo "$TAGS_JSON" | jq -r '.[] | "ghcr.io/'"${REPO_OWNER}"'/${{ inputs.image_name }}:" + .')
+      #     # Combine all tags into a comma-separated list
+      #     ALL_TAGS=$(echo -e "${DOCKERHUB_TAGS}\n${GHCR_TAGS}" | paste -sd "," -)
+      #     # Set output
+      #     echo "tags=${ALL_TAGS}" >> $GITHUB_OUTPUT
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: repo/${{ inputs.context_path }}
-          platforms: ${{ inputs.platforms }}
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            org.opencontainers.image.title=${{ inputs.image_name }}
-            org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # - name: Build and push Docker image
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: repo/${{ inputs.context_path }}
+      #     platforms: ${{ inputs.platforms }}
+      #     push: ${{ github.event_name != 'pull_request' }}
+      #     tags: ${{ steps.meta.outputs.tags }}
+      #     labels: |
+      #       org.opencontainers.image.title=${{ inputs.image_name }}
+      #       org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
+      #       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
 
-      - name: Save Docker image
-        run: |
-          set -e # Exit on any error
-          VERSION="${{ steps.version.outputs.full_version }}"
+      # - name: Save Docker image
+      #   run: |
+      #     set -e # Exit on any error
+      #     VERSION="${{ steps.version.outputs.full_version }}"
           
-          # Pull and save GitHub Container Registry image
-          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
-          echo "Pulling GitHub Container Registry image: $GHCR_TAG"
-          docker pull $GHCR_TAG
-          echo "Saving GitHub Container Registry image: $GHCR_TAG"
-          docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
+      #     # Pull and save GitHub Container Registry image
+      #     REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+      #     GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
+      #     echo "Pulling GitHub Container Registry image: $GHCR_TAG"
+      #     docker pull $GHCR_TAG
+      #     echo "Saving GitHub Container Registry image: $GHCR_TAG"
+      #     docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
 
-      - name: Generate SBOM
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FULL_VERSION: ${{ steps.version.outputs.full_version }}
-          IMAGE_NAME: ${{ inputs.image_name }}
-        run: |
-          chmod +x .github/workflows/build-and-push/generate_sbom.py
-          .github/workflows/build-and-push/generate_sbom.py
+      # - name: Generate SBOM
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     FULL_VERSION: ${{ steps.version.outputs.full_version }}
+      #     IMAGE_NAME: ${{ inputs.image_name }}
+      #   run: |
+      #     chmod +x .github/workflows/build-and-push/generate_sbom.py
+      #     .github/workflows/build-and-push/generate_sbom.py
 
-      - name: Generate Vulnerability Report
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FULL_VERSION: ${{ steps.version.outputs.full_version }}
-          IMAGE_NAME: ${{ inputs.image_name }}
-        run: |
-          chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
-          .github/workflows/build-and-push/generate_vulnerability_report.py
+      # - name: Generate Vulnerability Report
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     FULL_VERSION: ${{ steps.version.outputs.full_version }}
+      #     IMAGE_NAME: ${{ inputs.image_name }}
+      #   run: |
+      #     chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
+      #     .github/workflows/build-and-push/generate_vulnerability_report.py
 
-      - name: Commit generated files
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.full_version }}
-        run: |
-          chmod +x .github/workflows/build-and-push/commit_files.py
-          .github/workflows/build-and-push/commit_files.py
+      # - name: Commit generated files
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     VERSION: ${{ steps.version.outputs.full_version }}
+      #   run: |
+      #     chmod +x .github/workflows/build-and-push/commit_files.py
+      #     .github/workflows/build-and-push/commit_files.py
 
-      - name: Create Release
-        id: release
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          chmod +x .github/workflows/build-and-push/publish_release.py
-          .github/workflows/build-and-push/publish_release.py
+      # - name: Create Release
+      #   id: release
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     chmod +x .github/workflows/build-and-push/publish_release.py
+      #     .github/workflows/build-and-push/publish_release.py
 
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: repo
-        run: |
-          VERSION="${{ steps.version.outputs.full_version }}"
-          BRANCH=${GITHUB_REF#refs/heads/}
+      # - name: Upload release assets
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   working-directory: repo
+      #   run: |
+      #     VERSION="${{ steps.version.outputs.full_version }}"
+      #     BRANCH=${GITHUB_REF#refs/heads/}
           
-          # Copy files without dots to match release naming
-          cp .vulnerability_report.txt vulnerability_report.txt
+      #     # Copy files without dots to match release naming
+      #     cp .vulnerability_report.txt vulnerability_report.txt
           
-          echo "Uploading release assets for version $VERSION"
-          gh release upload "$VERSION" \
-            "../${{ inputs.image_name }}.tar" \
-            ".sbom/sbom.json" \
-            ".sbom/sbom.txt" \
-            "vulnerability_report.txt"
+      #     echo "Uploading release assets for version $VERSION"
+      #     gh release upload "$VERSION" \
+      #       "../${{ inputs.image_name }}.tar" \
+      #       ".sbom/sbom.json" \
+      #       ".sbom/sbom.txt" \
+      #       "vulnerability_report.txt"

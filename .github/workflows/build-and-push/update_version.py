@@ -5,7 +5,6 @@ import sys
 import json
 from typing import List, Dict
 import re
-
 import requests
 
 def get_version_parts(branch: str) -> tuple[str, str, str]:
@@ -55,59 +54,66 @@ def main():
             'Accept': 'application/vnd.github.v3+json'
         }
 
-        # Use full branch name for the version file
         filename = f".version_{branch}.json"
-        print(f"Looking for version file: {filename}")
-        
+        local_path = os.path.abspath(filename)
         url = f"https://api.github.com/repos/{github_repo}/contents/{filename}"
-        response = requests.get(url, headers=headers)
+        
+        print(f"Local file path: {local_path}")
+        
+        # Add ref parameter to specify branch
+        params = {'ref': branch}
+        
+        # Get existing file if it exists
+        response = requests.get(url, headers=headers, params=params)
         
         if response.status_code == 200:
-            content = json.loads(base64.b64decode(response.json()['content']))
-            build_number = content['build_number'] + 1
+            # File exists, increment build number
+            existing_data = json.loads(base64.b64decode(response.json()['content']))
+            build_number = existing_data['build_number'] + 1
             sha = response.json()['sha']
-            print(f"Found existing version file. Current build number: {content['build_number']}")
         else:
-            build_number = 1
+            # Create new file with initial values
+            build_number = 0
             sha = None
-            print("No existing version file found. Starting with build number 1")
 
-        # Generate version information
-        full_version = f"{version_part}.{build_number}{suffix}"
+        # Generate tags using existing function
         tags = generate_tags(version_nums, suffix, build_number)
 
         # Create version file content
         version_data = {
             'branch': branch,
             'build_number': build_number,
-            'version': full_version,
+            'version': tags[-2],  # The full version is second to last in tags
             'tags': tags
         }
 
+        # Save locally
+        with open(filename, 'w') as f:
+            json.dump(version_data, f, indent=2)
+        print(f"File saved locally at: {local_path}")
+
+        # Encode content for GitHub API
         content = base64.b64encode(json.dumps(version_data, indent=2).encode()).decode()
-        data = {
-            'message': f'Update version to {full_version}',
-            'content': content,
-        }
         
+        # Prepare update data
+        data = {
+            'message': f'Update version to {version_data["version"]}',
+            'content': content,
+            'branch': branch  # Specify branch for update
+        }
         if sha:
             data['sha'] = sha
 
-        print(f"Updating version file: {filename}")
-        print(f"New version: {full_version}")
-        print(f"Build number: {build_number}")
-        
+        # Update or create file
         response = requests.put(url, headers=headers, json=data)
         if not response.ok:
             print(f"Error updating file: {response.status_code}")
             print(response.text)
             sys.exit(1)
 
-        print(f"Successfully updated {filename}")
-
         # Set GitHub Actions outputs
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-            f.write(f"full_version={full_version}\n")
+            f.write(f"full_version={version_data['version']}\n")
             f.write("tags<<EOF\n")
             f.write(json.dumps(tags))
             f.write("\nEOF\n")

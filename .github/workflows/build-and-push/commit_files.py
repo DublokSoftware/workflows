@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 import os
+import shutil
 import sys
 import base64
 import logging
 import requests
-import shutil
+import time
+import json
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Optional
 
 # Set up logging
 logging.basicConfig(
@@ -22,7 +24,7 @@ def setup_directories():
 def organize_files():
     """Organize files into their correct locations."""
     try:
-        # Move SBOM files to .sbom directory
+        # Move SBOM files
         if Path('sbom_output/sbom.json').exists():
             shutil.copy2('sbom_output/sbom.json', '.sbom/sbom.json')
         if Path('sbom_output/sbom.txt').exists():
@@ -36,6 +38,17 @@ def organize_files():
     except Exception as e:
         logger.error(f"Failed to organize files: {e}")
         raise
+
+def get_version_data(branch: str) -> Optional[Dict]:
+    """Read the current version file."""
+    try:
+        version_file = Path(f'.version_{branch}.json')
+        if version_file.exists():
+            with open(version_file, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to read version file: {e}")
+    return None
 
 def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_path: str, commit_message: str) -> bool:
     """Update or create a file in GitHub repository using the API."""
@@ -74,12 +87,19 @@ def commit_files(version: str, branch: str) -> bool:
         github_token = os.environ['GITHUB_TOKEN']
         github_repo = os.environ['GITHUB_REPOSITORY']
         
+        # First get the current version data
+        version_data = get_version_data(branch)
+        if not version_data:
+            logger.error("Could not read version data")
+            return False
+
         headers = {
             'Authorization': f'token {github_token}',
             'Accept': 'application/vnd.github.v3+json'
         }
 
-        commit_message = f"Update version files for {version}"
+        commit_message = f"Update version files for {version_data['version']}"
+        logger.info(f"Committing files with version: {version_data['version']}")
         
         # First organize files
         setup_directories()
@@ -118,6 +138,17 @@ def main():
             logger.error("Missing required environment variables")
             sys.exit(1)
 
+        # Wait a moment for version file to be updated
+        time.sleep(2)
+        
+        # Log current version file content
+        version_data = get_version_data(branch)
+        if version_data:
+            logger.info(f"Current version file content: {json.dumps(version_data, indent=2)}")
+        else:
+            logger.error("Could not read version file")
+            sys.exit(1)
+
         if not commit_files(version, branch):
             logger.error("Failed to commit some files")
             sys.exit(1)
@@ -125,7 +156,7 @@ def main():
         logger.info("Successfully committed all files")
 
     except Exception as e:
-        logger.error(f"File commit process failed: {e}")
+        logger.error(f"File processing failed: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
