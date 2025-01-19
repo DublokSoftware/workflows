@@ -4,6 +4,7 @@ import sys
 import base64
 import logging
 import requests
+import shutil
 from pathlib import Path
 from typing import Dict, List
 
@@ -13,6 +14,28 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+def setup_directories():
+    """Create necessary directories."""
+    Path('.sbom').mkdir(exist_ok=True)
+
+def organize_files():
+    """Organize files into their correct locations."""
+    try:
+        # Move SBOM files to .sbom directory
+        if Path('sbom_output/sbom.json').exists():
+            shutil.copy2('sbom_output/sbom.json', '.sbom/sbom.json')
+        if Path('sbom_output/sbom.txt').exists():
+            shutil.copy2('sbom_output/sbom.txt', '.sbom/sbom.txt')
+        
+        # Create copy of vulnerability report without dot
+        if Path('.vulnerability_report.txt').exists():
+            shutil.copy2('.vulnerability_report.txt', 'vulnerability_report.txt')
+            
+        logger.info("Successfully organized files")
+    except Exception as e:
+        logger.error(f"Failed to organize files: {e}")
+        raise
 
 def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_path: str, commit_message: str) -> bool:
     """Update or create a file in GitHub repository using the API."""
@@ -58,11 +81,15 @@ def commit_files(version: str, branch: str) -> bool:
 
         commit_message = f"Update version files for {version}"
         
+        # First organize files
+        setup_directories()
+        organize_files()
+        
         # Define files to commit
         files_to_commit = [
             # (local_path, github_path)
-            (Path('sbom_output/sbom.json'), '.sbom/sbom.json'),
-            (Path('sbom_output/sbom.txt'), '.sbom/sbom.txt'),
+            (Path('.sbom/sbom.json'), '.sbom/sbom.json'),
+            (Path('.sbom/sbom.txt'), '.sbom/sbom.txt'),
             (Path('.vulnerability_report.txt'), '.vulnerability_report.txt'),
             (Path(f'.version_{branch}.json'), f'.version_{branch}.json'),
         ]
