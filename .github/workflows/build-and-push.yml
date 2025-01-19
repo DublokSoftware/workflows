@@ -156,7 +156,7 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        working-directory: repo  # Add this line to match other steps
+        working-directory: repo
         run: |
           VERSION="${{ steps.version.outputs.full_version }}"
           BRANCH=${GITHUB_REF#refs/heads/}
