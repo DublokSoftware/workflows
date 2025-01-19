@@ -38,7 +38,7 @@ jobs:
         with:
           repository: dubloksoftware/workflows
           path: .github/workflows
-          
+
       # Then checkout the caller's repository
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -49,8 +49,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           pip install requests
-          chmod +x .github/workflows/build-push/update_version.py
-          .github/workflows/build-push/update_version.py
+          chmod +x .github/workflows/build-and-push/update_version.py
+          .github/workflows/build-and-push/update_version.py
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -119,24 +119,24 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_VERSION: ${{ steps.version.outputs.full_version }}
         run: |
-          chmod +x .github/workflows/build-push/generate_sbom.py
-          .github/workflows/build-push/generate_sbom.py
+          chmod +x .github/workflows/build-and-push/generate_sbom.py
+          .github/workflows/build-and-push/generate_sbom.py
 
       - name: Generate Vulnerability Report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FULL_VERSION: ${{ steps.version.outputs.full_version }}
         run: |
-          chmod +x .github/workflows/build-push/generate_vulnerability_report.py
-          .github/workflows/build-push/generate_vulnerability_report.py
+          chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
+          .github/workflows/build-and-push/generate_vulnerability_report.py
 
       - name: Create Release
         id: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          chmod +x .github/workflows/build-push/publish_release.py
-          .github/workflows/build-push/publish_release.py
+          chmod +x .github/workflows/build-and-push/publish_release.py
+          .github/workflows/build-and-push/publish_release.py
 
       - name: Upload release assets
         env:
