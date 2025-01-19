@@ -1,0 +1,24 @@
+# Called workflow (reusable.yml)
+name: Reusable workflow
+on:
+  workflow_call:
+    inputs:
+      username:
+        required: true
+        type: string
+
+jobs:
+  reusable_job:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "Hello ${{ inputs.username }}"
+
+# Caller workflow (use.yml)
+name: Caller workflow
+on: [push]
+jobs:
+  call_reusable:
+    uses: dubloksoftware/workflows/.github/workflows/reusable.yml@main
+    with:
+      username: "John"
