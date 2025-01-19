@@ -1,4 +1,4 @@
-# .github/workflows/docker-build-push.yml
+# .github/workflows/build-and-push.yml
 name: Reusable Docker Build and Push
 on:
   workflow_call:
