@@ -1,9 +1,9 @@
-# Called workflow (reusable.yml)
+# reusable.yml
 name: Reusable workflow
 on:
   workflow_call:
     inputs:
-      username:
+      username:    # This defines the expected input
         required: true
         type: string
     secrets:
