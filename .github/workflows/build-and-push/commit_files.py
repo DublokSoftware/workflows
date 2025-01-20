@@ -29,11 +29,11 @@ def organize_files():
         #     shutil.copy2('sbom_output/sbom.json', '.sbom/sbom.json')
         # if Path('sbom_output/sbom.txt').exists():
         #     shutil.copy2('sbom_output/sbom.txt', '.sbom/sbom.txt')
-        
+
         # Create copy of vulnerability report without dot
         if Path('.vulnerability_report.txt').exists():
             shutil.copy2('.vulnerability_report.txt', 'vulnerability_report.txt')
-            
+
         logger.info("Successfully organized files")
     except Exception as e:
         logger.error(f"Failed to organize files: {e}")
@@ -54,29 +54,26 @@ def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_
     """Update or create a file in GitHub repository using the API."""
     try:
         url = f'https://api.github.com/repos/{github_repo}/contents/{github_path}'
-        
+
         # Read file content
         with open(file_path, 'rb') as f:
             content = base64.b64encode(f.read()).decode()
-
         # Check if file exists
         response = requests.get(url, headers=headers)
-        
+
         data = {
             'message': commit_message,
             'content': content,
         }
-        
+
         if response.status_code == 200:
             # File exists, include its SHA
             data['sha'] = response.json()['sha']
-
         # Create or update file
         response = requests.put(url, headers=headers, json=data)
         response.raise_for_status()
         logger.info(f"Successfully updated {github_path}")
         return True
-
     except Exception as e:
         logger.error(f"Failed to update {github_path}: {e}")
         return False
@@ -86,25 +83,23 @@ def commit_files(version: str, branch: str) -> bool:
     try:
         github_token = os.environ['GITHUB_TOKEN']
         github_repo = os.environ['GITHUB_REPOSITORY']
-        
+
         # First get the current version data
         version_data = get_version_data(branch)
         if not version_data:
             logger.error("Could not read version data")
             return False
-
         headers = {
             'Authorization': f'token {github_token}',
             'Accept': 'application/vnd.github.v3+json'
         }
-
         commit_message = f"Update version files for {version_data['version']}"
         logger.info(f"Committing files with version: {version_data['version']}")
-        
+
         # First organize files
         setup_directories()
         organize_files()
-        
+
         # Define files to commit
         files_to_commit = [
             # (local_path, github_path)
@@ -113,17 +108,15 @@ def commit_files(version: str, branch: str) -> bool:
             (Path('.vulnerability_report.txt'), '.vulnerability_report.txt'),
             (Path(f'.version_{branch}.json'), f'.version_{branch}.json'),
         ]
-
         success = True
         for local_path, github_path in files_to_commit:
             if local_path.exists():
+                logger.info(f"Committing file: {local_path} to {github_path}")
                 if not update_github_file(headers, github_repo, local_path, github_path, commit_message):
                     success = False
             else:
                 logger.warning(f"File not found: {local_path}")
-
         return success
-
     except Exception as e:
         logger.error(f"Failed to commit files: {e}")
         return False
@@ -133,14 +126,12 @@ def main():
     try:
         version = os.environ.get('VERSION')
         branch = os.environ.get('GITHUB_REF', '').replace('refs/heads/', '')
-
         if not version or not branch:
             logger.error("Missing required environment variables")
             sys.exit(1)
-
         # Wait a moment for version file to be updated
         time.sleep(2)
-        
+
         # Log current version file content
         version_data = get_version_data(branch)
         if version_data:
@@ -148,13 +139,10 @@ def main():
         else:
             logger.error("Could not read version file")
             sys.exit(1)
-
         if not commit_files(version, branch):
             logger.error("Failed to commit some files")
             sys.exit(1)
-
         logger.info("Successfully committed all files")
-
     except Exception as e:
         logger.error(f"File processing failed: {e}")
         sys.exit(1)
