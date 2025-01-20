@@ -3,129 +3,237 @@ import os
 import sys
 import json
 import base64
+import time
 import requests
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
+from requests.exceptions import RequestException
 
-# Set up logging
+# Set up logging with more detailed format
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(levelname)s - [%(filename)s:%(lineno)d] - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-def get_version_file_content(github_token: str, github_repo: str, branch: str) -> Optional[Dict]:
-    """Get content of version file from repository."""
-    headers = {
-        'Authorization': f'token {github_token}',
-        'Accept': 'application/vnd.github.v3+json'
-    }
-    # Look for version file in root directory
-    version_file = f".version_{branch}.json"
-    url = f"https://api.github.com/repos/{github_repo}/contents/{version_file}"
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        return json.loads(base64.b64decode(response.json()['content']))
-    return None
+class GitHubAPIError(Exception):
+    """Custom exception for GitHub API errors"""
+    def __init__(self, message: str, status_code: int = None, response_text: str = None):
+        self.message = message
+        self.status_code = status_code
+        self.response_text = response_text
+        super().__init__(self.message)
 
-def create_tag(github_token: str, github_repo: str, tag_name: str, sha: str) -> bool:
-    """Create a new tag in the repository."""
-    headers = {
-        'Authorization': f'token {github_token}',
-        'Accept': 'application/vnd.github.v3+json'
-    }
-    url = f"https://api.github.com/repos/{github_repo}/git/refs"
-    data = {
-        'ref': f'refs/tags/{tag_name}',
-        'sha': sha
-    }
-    response = requests.post(url, headers=headers, json=data)
-    return response.status_code == 201
+class GitHubReleaseManager:
+    def __init__(self, token: str, repo: str, branch: str, sha: str):
+        self.token = token
+        self.repo = repo
+        self.branch = branch
+        self.sha = sha
+        self.headers = {
+            'Authorization': f'token {token}',
+            'Accept': 'application/vnd.github.v3+json'
+        }
+        self.base_url = f"https://api.github.com/repos/{repo}"
 
-def create_release(github_token: str, github_repo: str, version_data: Dict, sha: str) -> Optional[str]:
-    """Create a new release in the repository."""
-    headers = {
-        'Authorization': f'token {github_token}',
-        'Accept': 'application/vnd.github.v3+json'
-    }
-    url = f"https://api.github.com/repos/{github_repo}/releases"
-    # Extract suffix if exists
-    version = version_data['version']
-    suffix = version.split('-')[1] if '-' in version else ''
-    # Determine if it should be a pre-release
-    is_prerelease = suffix.lower() in ['alpha', 'beta']
-    # Create release notes with version and tags information
-    release_notes = f"""Version {version}
-Build Number: {version_data['build_number']}
-Branch: {version_data['branch']}
-Release Type: {'Pre-release' if is_prerelease else 'Regular Release'}
-Docker Tags:
+    def _make_request(self, method: str, endpoint: str, data: Dict = None, 
+                     max_retries: int = 3, retry_delay: int = 2) -> requests.Response:
+        """Make HTTP request to GitHub API with retry mechanism"""
+        url = f"{self.base_url}/{endpoint}"
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.request(
+                    method=method,
+                    url=url,
+                    headers=self.headers,
+                    json=data
+                )
+                
+                if response.status_code in [200, 201, 204]:
+                    return response
+                
+                if response.status_code == 404:
+                    return response
+                
+                if response.status_code == 429:  # Rate limit exceeded
+                    reset_time = int(response.headers.get('X-RateLimit-Reset', 0))
+                    sleep_time = max(reset_time - time.time(), 0) + 1
+                    logger.warning(f"Rate limit exceeded. Waiting {sleep_time} seconds...")
+                    time.sleep(sleep_time)
+                    continue
+                
+                logger.error(f"Request failed: {response.status_code} - {response.text}")
+                
+            except RequestException as e:
+                logger.error(f"Request error on attempt {attempt + 1}: {str(e)}")
+                
+            if attempt < max_retries - 1:
+                sleep_time = retry_delay * (attempt + 1)
+                logger.warning(f"Retrying in {sleep_time} seconds...")
+                time.sleep(sleep_time)
+            
+        raise GitHubAPIError(
+            f"Failed after {max_retries} attempts",
+            response.status_code if 'response' in locals() else None,
+            response.text if 'response' in locals() else None
+        )
+
+    def get_version_file_content(self) -> Dict:
+        """Get and parse version file content"""
+        version_file = f".version_{self.branch}.json"
+        response = self._make_request('GET', f"contents/{version_file}")
+        
+        if response.status_code == 404:
+            raise GitHubAPIError(f"Version file {version_file} not found")
+        
+        try:
+            content = base64.b64decode(response.json()['content']).decode('utf-8')
+            return json.loads(content)
+        except (json.JSONDecodeError, KeyError, UnicodeDecodeError) as e:
+            raise GitHubAPIError(f"Failed to parse version file: {str(e)}")
+
+    def check_tag_exists(self, tag_name: str) -> Tuple[bool, Optional[str]]:
+        """Check if tag exists and return its SHA if it does"""
+        response = self._make_request('GET', f"git/refs/tags/{tag_name}")
+        if response.status_code == 200:
+            return True, response.json()['object']['sha']
+        return False, None
+
+    def delete_tag(self, tag_name: str) -> bool:
+        """Delete an existing tag"""
+        logger.info(f"Attempting to delete tag: {tag_name}")
+        response = self._make_request('DELETE', f"git/refs/tags/{tag_name}")
+        return response.status_code in [200, 204]
+
+    def delete_release(self, tag_name: str) -> bool:
+        """Delete an existing release"""
+        logger.info(f"Attempting to delete release for tag: {tag_name}")
+        response = self._make_request('GET', f"releases/tags/{tag_name}")
+        
+        if response.status_code == 200:
+            release_id = response.json()['id']
+            delete_response = self._make_request('DELETE', f"releases/{release_id}")
+            return delete_response.status_code in [200, 204]
+        return True
+
+    def create_tag(self, tag_name: str) -> bool:
+        """Create a new tag, handling existing tags"""
+        logger.info(f"Creating tag: {tag_name}")
+        
+        # Check and handle existing tag
+        tag_exists, existing_sha = self.check_tag_exists(tag_name)
+        if tag_exists:
+            logger.info(f"Tag {tag_name} already exists with SHA: {existing_sha}")
+            if not self.delete_release(tag_name) or not self.delete_tag(tag_name):
+                raise GitHubAPIError(f"Failed to delete existing tag/release: {tag_name}")
+        
+        response = self._make_request(
+            'POST',
+            "git/refs",
+            data={
+                'ref': f'refs/tags/{tag_name}',
+                'sha': self.sha
+            }
+        )
+        return True
+
+    def create_release(self, version_data: Dict) -> str:
+        """Create a new release with detailed release notes"""
+        logger.info(f"Creating release for version: {version_data['version']}")
+        
+        version = version_data['version']
+        suffix = version.split('-')[1] if '-' in version else ''
+        is_prerelease = suffix.lower() in ['alpha', 'beta', 'rc']
+        
+        release_notes = self._generate_release_notes(version_data, is_prerelease)
+        
+        response = self._make_request(
+            'POST',
+            "releases",
+            data={
+                'tag_name': version,
+                'target_commitish': self.sha,
+                'name': f"Release {version}",
+                'body': release_notes,
+                'draft': False,
+                'prerelease': is_prerelease
+            }
+        )
+        
+        return response.json()['upload_url']
+
+    def _generate_release_notes(self, version_data: Dict, is_prerelease: bool) -> str:
+        """Generate formatted release notes"""
+        return f"""# Release {version_data['version']}
+
+## Release Information
+- Version: {version_data['version']}
+- Build Number: {version_data['build_number']}
+- Branch: {version_data['branch']}
+- Release Type: {'Pre-release' if is_prerelease else 'Stable Release'}
+- Commit SHA: {self.sha}
+
+## Docker Tags
 {chr(10).join(['- ' + tag for tag in version_data['tags']])}
+
+## Additional Information
+- Release Date: {time.strftime('%Y-%m-%d %H:%M:%S UTC')}
+- Created by: GitHub Actions
 """
-    data = {
-        'tag_name': version,
-        'target_commitish': sha,
-        'name': f"Release {version}",
-        'body': release_notes,
-        'draft': False,
-        'prerelease': is_prerelease
-    }
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 201:
-            logger.info(f"Successfully created release: {version}")
-            return response.json()['upload_url']
-        else:
-            logger.error(f"Failed to create release. Status code: {response.status_code}")
-            logger.error(f"Error message: {response.text}")
-            return None
-    except Exception as e:
-        logger.error(f"Exception occurred while creating release: {str(e)}")
-        return None
 
 def main():
-    # Get environment variables
-    github_token = os.environ.get('GITHUB_TOKEN')
-    github_repo = os.environ.get('GITHUB_REPOSITORY')
-    branch = os.environ.get('GITHUB_REF').replace('refs/heads/', '')
-    sha = os.environ.get('GITHUB_SHA')
-    if not all([github_token, github_repo, branch, sha]):
-        logger.error("Missing required environment variables")
+    # Validate environment variables
+    required_env_vars = {
+        'GITHUB_TOKEN': os.environ.get('GITHUB_TOKEN'),
+        'GITHUB_REPOSITORY': os.environ.get('GITHUB_REPOSITORY'),
+        'GITHUB_REF': os.environ.get('GITHUB_REF'),
+        'GITHUB_SHA': os.environ.get('GITHUB_SHA')
+    }
+
+    missing_vars = [k for k, v in required_env_vars.items() if not v]
+    if missing_vars:
+        logger.error(f"Missing required environment variables: {', '.join(missing_vars)}")
         sys.exit(1)
 
-    # Log environment variables
-    logger.info(f"GITHUB_TOKEN: {github_token}")
-    logger.info(f"GITHUB_REPOSITORY: {github_repo}")
-    logger.info(f"GITHUB_REF: {branch}")
-    logger.info(f"GITHUB_SHA: {sha}")
+    branch = required_env_vars['GITHUB_REF'].replace('refs/heads/', '')
+    
+    try:
+        manager = GitHubReleaseManager(
+            token=required_env_vars['GITHUB_TOKEN'],
+            repo=required_env_vars['GITHUB_REPOSITORY'],
+            branch=branch,
+            sha=required_env_vars['GITHUB_SHA']
+        )
 
-    # Get version information
-    version_data = get_version_file_content(github_token, github_repo, branch)
-    if not version_data:
-        logger.error("Failed to get version information")
+        # Get version information
+        version_data = manager.get_version_file_content()
+        logger.info(f"Version data: {json.dumps(version_data, indent=2)}")
+
+        # Create tag
+        manager.create_tag(version_data['version'])
+        logger.info(f"Successfully created tag: {version_data['version']}")
+
+        # Create release
+        upload_url = manager.create_release(version_data)
+        logger.info(f"Successfully created release: {version_data['version']}")
+
+        # Set output for GitHub Actions
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"version={version_data['version']}\n")
+            f.write(f"release_created=true\n")
+            f.write(f"upload_url={upload_url}\n")
+
+    except GitHubAPIError as e:
+        logger.error(f"GitHub API Error: {e.message}")
+        if e.status_code:
+            logger.error(f"Status Code: {e.status_code}")
+        if e.response_text:
+            logger.error(f"Response: {e.response_text}")
         sys.exit(1)
-
-    # Log version data
-    logger.info(f"Version data: {json.dumps(version_data, indent=2)}")
-
-    # Create tag
-    if not create_tag(github_token, github_repo, version_data['version'], sha):
-        logger.error("Failed to create tag")
+    except Exception as e:
+        logger.error(f"Unexpected error: {str(e)}", exc_info=True)
         sys.exit(1)
-    logger.info(f"Successfully created tag: {version_data['version']}")
-
-    # Create release
-    upload_url = create_release(github_token, github_repo, version_data, sha)
-    if not upload_url:
-        logger.error("Failed to create release")
-        sys.exit(1)
-    logger.info(f"Successfully created release: {version_data['version']}")
-
-    # Set output for GitHub Actions
-    with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-        f.write(f"version={version_data['version']}\n")
-        f.write(f"release_created=true\n")
-        f.write(f"upload_url={upload_url}\n")
 
 if __name__ == '__main__':
     main()
