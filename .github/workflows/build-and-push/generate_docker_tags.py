@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, repo_owner: str) -> tuple[str, str, str, str]:
+def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, repo_owner: str) -> tuple[str, str, str, str, str]:
     """Generate Docker Hub and GitHub Container Registry tags."""
     try:
         # Print inputs
@@ -38,6 +38,9 @@ def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, 
         ]
         sha_tags_str = ','.join(sha_tags)
         
+        # Generate GitHub Container Registry SHA tag
+        ghcr_sha_tag = f"ghcr.io/{repo_owner}/{image_name}:{sha}"
+        
         # Combine all tags into a comma-separated list
         all_tags = ','.join(dockerhub_tags + ghcr_tags + sha_tags)
         
@@ -53,12 +56,16 @@ def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, 
         print("\n=== SHA Tags ===")
         for tag in sha_tags:
             print(tag)
+            
+        print("\n=== GitHub Container Registry SHA Tag ===")
+        print(ghcr_sha_tag)
         
         # Print final outputs
         print("\n=== Final Outputs ===")
         print(f"dockerhub_tags={dockerhub_tags_str}")
         print(f"ghcr_tags={ghcr_tags_str}")
         print(f"sha_tags={sha_tags_str}")
+        print(f"ghcr_sha_tag={ghcr_sha_tag}")
         print(f"tags={all_tags}")
         print("=====================")
         
@@ -67,9 +74,10 @@ def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, 
             f.write(f"dockerhub_tags={dockerhub_tags_str}\n")
             f.write(f"ghcr_tags={ghcr_tags_str}\n")
             f.write(f"sha_tags={sha_tags_str}\n")
+            f.write(f"ghcr_sha_tag={ghcr_sha_tag}\n")
             f.write(f"tags={all_tags}\n")
             
-        return dockerhub_tags_str, ghcr_tags_str, sha_tags_str, all_tags
+        return dockerhub_tags_str, ghcr_tags_str, sha_tags_str, ghcr_sha_tag, all_tags
         
     except Exception as e:
         print(f"Error generating Docker tags: {str(e)}")
