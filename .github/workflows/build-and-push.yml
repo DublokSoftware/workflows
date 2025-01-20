@@ -24,6 +24,10 @@ on:
         required: true
         description: "Docker Hub access token"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
