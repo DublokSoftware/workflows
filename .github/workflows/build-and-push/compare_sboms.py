@@ -10,12 +10,12 @@ def compare_sbom_files():
     # Check if both files exist
     if not os.path.exists(new_sbom_path):
         print("New SBOM file doesn't exist")
-        print("::error::New SBOM file not found")
-        sys.exit(1)
+        return False
         
     if not os.path.exists(old_sbom_path):
         print("Old SBOM file doesn't exist. This is the first SBOM.")
-        print("::set-output name=new_sbom::true")
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+            print(f"new_sbom=true", file=fh)
         return True
 
     try:
@@ -29,18 +29,20 @@ def compare_sbom_files():
         # Compare contents
         if old_content != new_content:
             print("SBOM files are different")
-            print("::set-output name=new_sbom::true")
-            return True
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f"new_sbom=true", file=fh)
+            sys.exit(0)
         else:
             print("SBOM files are identical")
-            print("::notice::No changes detected in SBOM files. Stopping workflow.")
-            print("::set-output name=new_sbom::false")
-            sys.exit(78)
+            print("Notice: No changes detected in SBOM files. Stopping workflow.")
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
+                print(f"new_sbom=false", file=fh)
+            sys.exit(78)  # Custom exit code for no changes
 
     except Exception as e:
         print(f"Error comparing SBOM files: {str(e)}")
-        print(f"::error::Failed to compare SBOM files: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
+    print("Comparing SBOMs")
     compare_sbom_files()
