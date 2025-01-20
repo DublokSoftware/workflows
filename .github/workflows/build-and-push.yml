@@ -93,19 +93,19 @@ jobs:
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
 
-      # - name: Build and push Docker image
-      #   uses: docker/build-push-action@v5
-      #   with:
-      #     context: repo/${{ inputs.context_path }}
-      #     platforms: ${{ inputs.platforms }}
-      #     push: ${{ github.event_name != 'pull_request' }}
-      #     tags: ${{ steps.meta.outputs.tags }}
-      #     labels: |
-      #       org.opencontainers.image.title=${{ inputs.image_name }}
-      #       org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
-      #       org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-      #     cache-from: type=gha
-      #     cache-to: type=gha,mode=max
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: repo/${{ inputs.context_path }}
+          platforms: ${{ inputs.platforms }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=${{ inputs.image_name }}
+            org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # - name: Save Docker image
       #   run: |
