@@ -16,7 +16,7 @@ def compare_sbom_files():
         print("Old SBOM file doesn't exist. This is the first SBOM.")
         with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
             print(f"new_sbom=true", file=fh)
-        return True
+        sys.exit(0)
 
     try:
         # Read contents of both files
@@ -37,7 +37,7 @@ def compare_sbom_files():
             print("Notice: No changes detected in SBOM files. Stopping workflow.")
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                 print(f"new_sbom=false", file=fh)
-            sys.exit(78)  # Custom exit code for no changes
+            sys.exit(0)
 
     except Exception as e:
         print(f"Error comparing SBOM files: {str(e)}")
