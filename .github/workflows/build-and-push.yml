@@ -107,6 +107,16 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Save Docker image
+        run: |
+          set -e # Exit on any error
+          VERSION="${{ steps.version.outputs.full_version }}"
+
+          # Save the image to a tar file
+          IMAGE_TAG="${{ steps.meta.outputs.tags }}"
+          echo "Saving Docker image: $IMAGE_TAG"
+          docker save $IMAGE_TAG -o "${{ inputs.image_name }}.tar"
+
       # - name: Save Docker image
       #   run: |
       #     set -e # Exit on any error
