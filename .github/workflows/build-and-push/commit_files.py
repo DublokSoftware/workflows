@@ -19,16 +19,16 @@ logger = logging.getLogger(__name__)
 
 def setup_directories():
     """Create necessary directories."""
-    Path('.sbom').mkdir(exist_ok=True)
+    Path('.sbom_').mkdir(exist_ok=True)
 
 def organize_files():
     """Organize files into their correct locations."""
     try:
         # Move SBOM files
-        # if Path('.sbom/sbom.json').exists():
-        #     shutil.copy2('.sbom/sbom.json', '.sbom/sbom.json')
-        # if Path('.sbom/sbom.txt').exists():
-        #     shutil.copy2('.sbom/sbom.txt', '.sbom/sbom.txt')
+        # if Path('.sbom_/sbom.json').exists():
+        #     shutil.copy2('.sbom_/sbom.json', '.sbom_/sbom.json')
+        # if Path('.sbom_/sbom.txt').exists():
+        #     shutil.copy2('.sbom_/sbom.txt', '.sbom_/sbom.txt')
 
         # Create copy of vulnerability report without dot
         if Path('.vulnerability_report.txt').exists():
@@ -103,8 +103,8 @@ def commit_files(version: str, branch: str) -> bool:
         # Define files to commit
         files_to_commit = [
             # (local_path, github_path)
-            (Path('.sbom/sbom.json'), '.sbom/sbom.json'),
-            (Path('.sbom/sbom.txt'), '.sbom/sbom.txt'),
+            (Path('.sbom_/sbom.json'), '.sbom_/sbom.json'),
+            (Path('.sbom_/sbom.txt'), '.sbom_/sbom.txt'),
             (Path('.vulnerability_report.txt'), '.vulnerability_report.txt'),
             (Path(f'.version_{branch}.json'), f'.version_{branch}.json'),
         ]
