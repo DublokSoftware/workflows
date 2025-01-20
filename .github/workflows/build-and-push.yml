@@ -35,6 +35,22 @@ jobs:
       contents: write
       packages: write
     steps:
+      - name: Log event name
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+
+      - name: Determine trigger type
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "Workflow triggered by a push event."
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Workflow triggered by manual dispatch."
+          elif [ "${{ github.event_name }}" == "schedule" ]; then
+            echo "Workflow triggered by a scheduled event."
+          else
+            echo "Workflow triggered by an unknown event: ${{ github.event_name }}"
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
@@ -140,7 +156,12 @@ jobs:
         run: |
           echo "Listing existing Docker images:"
           docker images
-  
+
+      - name: Extra step for scheduled events
+        if: github.event_name == 'schedule'
+        run: |
+          echo "This step runs only if the workflow is triggered by a scheduled event."
+
       - name: Generate Vulnerability Report
         working-directory: repo
         env:
