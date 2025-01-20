@@ -3,7 +3,7 @@ import json
 import os
 import sys
 
-def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, repo_owner: str) -> str:
+def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, repo_owner: str) -> tuple[str, str, str]:
     """Generate Docker Hub and GitHub Container Registry tags."""
     try:
         # Print inputs
@@ -22,12 +22,14 @@ def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, 
         
         # Generate Docker Hub tags
         dockerhub_tags = [f"{docker_username}/{image_name}:{tag}" for tag in tags]
+        dockerhub_tags_str = ','.join(dockerhub_tags)
         print("\n=== Docker Hub Tags ===")
         for tag in dockerhub_tags:
             print(tag)
         
         # Generate GitHub Container Registry tags
         ghcr_tags = [f"ghcr.io/{repo_owner}/{image_name}:{tag}" for tag in tags]
+        ghcr_tags_str = ','.join(ghcr_tags)
         print("\n=== GitHub Container Registry Tags ===")
         for tag in ghcr_tags:
             print(tag)
@@ -35,16 +37,20 @@ def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, 
         # Combine all tags into a comma-separated list
         all_tags = ','.join(dockerhub_tags + ghcr_tags)
         
-        # Print final output
-        print("\n=== Final Combined Tags ===")
+        # Print final outputs
+        print("\n=== Final Outputs ===")
+        print(f"dockerhub_tags={dockerhub_tags_str}")
+        print(f"ghcr_tags={ghcr_tags_str}")
         print(f"tags={all_tags}")
         print("=====================")
         
-        # Set output
+        # Set outputs
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
+            f.write(f"dockerhub_tags={dockerhub_tags_str}\n")
+            f.write(f"ghcr_tags={ghcr_tags_str}\n")
             f.write(f"tags={all_tags}\n")
             
-        return all_tags
+        return dockerhub_tags_str, ghcr_tags_str, all_tags
         
     except Exception as e:
         print(f"Error generating Docker tags: {str(e)}")
