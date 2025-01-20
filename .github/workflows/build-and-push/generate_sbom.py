@@ -23,13 +23,13 @@ def docker_login():
     try:
         github_token = os.environ['GITHUB_TOKEN']
         github_actor = os.environ['GITHUB_ACTOR']
-        
+
         login_cmd = [
             'docker', 'login', 'ghcr.io',
             '-u', github_actor,
             '--password-stdin'
         ]
-        
+
         subprocess.run(
             login_cmd,
             input=github_token.encode(),
@@ -47,9 +47,9 @@ def generate_sbom():
         repo_owner = os.environ['GITHUB_REPOSITORY_OWNER'].lower()
         image_name = os.environ['IMAGE_NAME']
         full_version = os.environ['FULL_VERSION']
-        
+
         image_tag = f"ghcr.io/{repo_owner}/{image_name}:{full_version}"
-        
+
         sbom_cmd = [
             'docker', 'run', '--rm',
             '-e', f'IMAGES={image_tag}',
@@ -61,10 +61,23 @@ def generate_sbom():
             '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
             'ghcr.io/dockforge/sbominify:latest'
         ]
-        
+
+        # Log the environment variables and command
+        logger.info(f"GITHUB_REPOSITORY_OWNER: {repo_owner}")
+        logger.info(f"IMAGE_NAME: {image_name}")
+        logger.info(f"FULL_VERSION: {full_version}")
+        logger.info(f"image_tag: {image_tag}")
+        logger.info(f"sbom_cmd: {sbom_cmd}")
+
         subprocess.run(sbom_cmd, check=True)
         logger.info("Successfully generated SBOM")
-        
+
+        # Log the location of the generated SBOMs
+        sbom_output_dir = Path(os.getcwd()) / 'sbom_output'
+        sbom_files = list(sbom_output_dir.glob('*'))
+        for sbom_file in sbom_files:
+            logger.info(f"Generated SBOM location: {sbom_file}")
+
     except Exception as e:
         logger.error(f"Failed to generate SBOM: {e}")
         raise
@@ -75,7 +88,7 @@ def main():
         setup_output_directory()
         docker_login()
         generate_sbom()
-        
+
     except Exception as e:
         logger.error(f"SBOM generation failed: {e}")
         sys.exit(1)
