@@ -99,13 +99,15 @@ jobs:
           .github/workflows/build-and-push/generate_docker_tags.py
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
+        env:
+          REPO_OWNER: ${{ github.repository_owner }}
         with:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ github.sha }}
+            ghcr.io/$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')/${{ inputs.image_name }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
             org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
