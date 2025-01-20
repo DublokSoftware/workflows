@@ -104,7 +104,7 @@ jobs:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: false
-          outputs: type=docker,dest=/tmp/docker-images.tar
+          outputs: type=oci,dest=/tmp/docker-images.tar # Changed from type=docker to type=oci
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
@@ -112,10 +112,11 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
+    
       - name: Load Docker images
         run: |
-          docker load < /tmp/docker-images.tar
+          # Use skopeo to copy from OCI archive to docker daemon
+          skopeo copy oci-archive:/tmp/docker-images.tar docker-daemon:${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ steps.version.outputs.full_version }}
       
       - name: List existing Docker images
         run: |
