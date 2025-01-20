@@ -152,7 +152,9 @@ jobs:
 
       - name: Cancel workflow
         if: steps.compare_sboms.outputs.new_sbom == 'false'
-        uses: ErcinDedeoglu/disband-workflow@v1.0.0
+        run: |
+            echo "Condition met, cancelling workflow"          
+            exit 0
 
       - name: Generate Vulnerability Report
         working-directory: repo
