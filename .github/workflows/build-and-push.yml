@@ -103,7 +103,9 @@ jobs:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: true
-          tags: ${{ github.sha }}
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/${{ inputs.image_name }}:${{ github.sha }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
             org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
@@ -118,7 +120,6 @@ jobs:
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
-
           # Pull and save GitHub Container Registry image
           REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${{ github.sha }}"
