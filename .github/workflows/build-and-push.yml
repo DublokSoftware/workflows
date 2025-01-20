@@ -31,13 +31,11 @@ jobs:
       contents: write
       packages: write
     steps:
-      # First checkout the caller's repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: repo
 
-      # Then checkout the workflow repository
       - name: Checkout workflow repository
         uses: actions/checkout@v4
         with:
@@ -51,7 +49,6 @@ jobs:
           cp -r workflows/.github/workflows/build-and-push/* repo/.github/workflows/build-and-push/
           cd repo
 
-      # Update all subsequent steps to work from the repo directory
       - name: Update version
         id: version
         working-directory: repo
@@ -182,20 +179,3 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
-      # - name: Upload release assets
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   working-directory: repo
-      #   run: |
-      #     VERSION="${{ steps.version.outputs.full_version }}"
-      #     BRANCH=${GITHUB_REF#refs/heads/}
-          
-      #     # Copy files without dots to match release naming
-      #     cp .vulnerability_report.txt vulnerability_report.txt
-          
-      #     echo "Uploading release assets for version $VERSION"
-      #     gh release upload "$VERSION" \
-      #       "../${{ inputs.image_name }}.tar" \
-      #       "sbom_output/sbom.json" \
-      #       "sbom_output/sbom.txt" \
-      #       "vulnerability_report.txt"
