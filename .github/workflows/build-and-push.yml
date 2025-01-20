@@ -103,7 +103,7 @@ jobs:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ github.sha }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
             org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
@@ -114,18 +114,18 @@ jobs:
         run: |
           echo "Listing existing Docker images:"
           docker images
-          - name: Save Docker image
-          run: |
-            set -e # Exit on any error
-            VERSION="${{ steps.version.outputs.full_version }}"
-  
-            # Pull and save GitHub Container Registry image
-            REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-            GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
-            echo "Pulling GitHub Container Registry image: $GHCR_TAG"
-            docker pull $GHCR_TAG
-            echo "Saving GitHub Container Registry image: $GHCR_TAG"
-            docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
+      - name: Save Docker image
+        run: |
+          set -e # Exit on any error
+          VERSION="${{ steps.version.outputs.full_version }}"
+
+          # Pull and save GitHub Container Registry image
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${{ github.sha }}"
+          echo "Pulling GitHub Container Registry image: $GHCR_TAG"
+          docker pull $GHCR_TAG
+          echo "Saving GitHub Container Registry image: $GHCR_TAG"
+          docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
