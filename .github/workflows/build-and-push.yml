@@ -131,13 +131,20 @@ jobs:
           AMD64_DIGEST=$(jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest' index.json)
           ARM64_DIGEST=$(jq -r '.manifests[] | select(.platform.architecture == "arm64") | .digest' index.json)
           
-          # Tag AMD64 image
-          docker load < blobs/sha256/${AMD64_DIGEST#sha256:}
-          docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
+          # Create blob directory paths
+          AMD64_BLOB="blobs/sha256/${AMD64_DIGEST#sha256:}"
+          ARM64_BLOB="blobs/sha256/${ARM64_DIGEST#sha256:}"
           
-          # Tag ARM64 image
-          docker load < blobs/sha256/${ARM64_DIGEST#sha256:}
-          docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
+          # Load images using proper file paths
+          if [ -f "$AMD64_BLOB" ]; then
+            docker load < "$AMD64_BLOB"
+            docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
+          fi
+          
+          if [ -f "$ARM64_BLOB" ]; then
+            docker load < "$ARM64_BLOB" 
+            docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
+          fi
           
           # Create manifest
           docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
