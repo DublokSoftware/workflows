@@ -16,7 +16,7 @@ def compare_sbom_files():
         print("Old SBOM file doesn't exist. This is the first SBOM.")
         with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
             print(f"new_sbom=true", file=fh)
-        sys.exit(0)
+        return True
 
     try:
         # Read contents of both files
