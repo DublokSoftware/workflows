@@ -127,22 +127,19 @@ jobs:
           cd /tmp/oci-images
           tar xf /tmp/docker-images.tar
           
-          # Get the manifest index
-          INDEX_HASH=$(cat index.json | jq -r '.manifests[0].digest' | sed 's/^sha256://')
-          
           # Load AMD64 image
           skopeo copy \
             --override-arch amd64 \
             --override-os linux \
-            oci-archive:/tmp/docker-images.tar@sha256:$INDEX_HASH \
-            docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
+            "oci:/tmp/oci-images:$VERSION" \
+            "docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64"
             
           # Load ARM64 image  
           skopeo copy \
             --override-arch arm64 \
             --override-os linux \
-            oci-archive:/tmp/docker-images.tar@sha256:$INDEX_HASH \
-            docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
+            "oci:/tmp/oci-images:$VERSION" \
+            "docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64"
       
           # Create manifest
           docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
