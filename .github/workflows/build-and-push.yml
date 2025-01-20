@@ -111,11 +111,17 @@ jobs:
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
-
+      
           # Save the image to a tar file
-          IMAGE_TAG="${{ steps.meta.outputs.tags }}"
-          echo "Saving Docker image: $IMAGE_TAG"
-          docker save $IMAGE_TAG -o "${{ inputs.image_name }}.tar"
+          IMAGE_TAGS="${{ steps.meta.outputs.tags }}"
+          echo "Saving Docker images: $IMAGE_TAGS"
+      
+          # Loop through each tag and save the image
+          for TAG in $(echo $IMAGE_TAGS | tr ',' ' '); do
+            echo "Saving Docker image: $TAG"
+            docker save $TAG -o "${TAG//\//_}.tar"
+          done
+        shell: /usr/bin/bash -e {0}
 
       # - name: Save Docker image
       #   run: |
