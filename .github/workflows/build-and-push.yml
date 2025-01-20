@@ -133,8 +133,8 @@ jobs:
         working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FULL_VERSION: ${{ steps.meta.outputs.ghcr_sha_tag }}
           IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ steps.meta.outputs.ghcr_sha_tag }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py

@@ -46,13 +46,13 @@ def generate_sbom():
     try:
         repo_owner = os.environ['GITHUB_REPOSITORY_OWNER'].lower()
         image_name = os.environ['IMAGE_NAME']
-        full_version = os.environ['FULL_VERSION']
+        image_tag = os.environ['IMAGE_TAG']
 
-        image_tag = f"ghcr.io/{repo_owner}/{image_name}:{full_version}"
+        image_uri = f"ghcr.io/{repo_owner}/{image_name}:{image_tag}"
 
         sbom_cmd = [
             'docker', 'run', '--rm',
-            '-e', f'IMAGES={image_tag}',
+            '-e', f'IMAGES={image_uri}',
             '-e', 'FILE_PREFIX=',
             '-e', 'FILE_SUFFIX=',
             '-e', 'FILE_NAME=sbom',
@@ -65,8 +65,8 @@ def generate_sbom():
         # Log the environment variables and command
         logger.info(f"GITHUB_REPOSITORY_OWNER: {repo_owner}")
         logger.info(f"IMAGE_NAME: {image_name}")
-        logger.info(f"FULL_VERSION: {full_version}")
-        logger.info(f"image_tag: {image_tag}")
+        logger.info(f"IMAGE_TAG: {image_tag}")
+        logger.info(f"image_uri: {image_uri}")
         logger.info(f"sbom_cmd: {sbom_cmd}")
 
         subprocess.run(sbom_cmd, check=True)
