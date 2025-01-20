@@ -98,6 +98,9 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
+
+
+
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
@@ -113,25 +116,52 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
     
+      - name: List OCI archive contents
+        run: |
+          skopeo inspect --raw oci-archive:/tmp/docker-images.tar | jq .
+      
       - name: Load Docker images
         run: |
-          # Use skopeo to copy from OCI archive to docker daemon
-          skopeo copy oci-archive:/tmp/docker-images.tar docker-daemon:${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}:${{ steps.version.outputs.full_version }}
+          VERSION="${{ steps.version.outputs.full_version }}"
+          IMAGE_NAME="${{ inputs.image_name }}"
+          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
+          
+          # Load AMD64 image
+          skopeo copy --override-arch amd64 \
+            oci-archive:/tmp/docker-images.tar \
+            docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
+            
+          # Load ARM64 image
+          skopeo copy --override-arch arm64 \
+            oci-archive:/tmp/docker-images.tar \
+            docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
+      
+          # Create manifest
+          docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
+            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 \
+            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
       
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
       
-      - name: Save Docker image
+      - name: Save Docker images
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
           DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
           
-          # Save the Docker image
-          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION -o "${IMAGE_NAME}_${VERSION}.tar"
+          # Save the AMD64 image
+          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 -o "${IMAGE_NAME}_${VERSION}_amd64.tar"
+          
+          # Save the ARM64 image
+          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64 -o "${IMAGE_NAME}_${VERSION}_arm64.tar"
+
+
+
+
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
