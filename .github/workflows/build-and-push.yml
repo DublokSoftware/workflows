@@ -150,7 +150,7 @@ jobs:
           chmod +x .github/workflows/build-and-push/compare_sboms.py
           .github/workflows/build-and-push/compare_sboms.py
 
-      - name: Cancel Previous Runs
+      - name: Cancel workflow
         if: steps.compare_sboms.outputs.new_sbom == 'false'
         uses: ErcinDedeoglu/disband-workflow@v1.0.0
 
