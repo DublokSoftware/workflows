@@ -103,8 +103,8 @@ def commit_files(version: str, branch: str) -> bool:
         # Define files to commit
         files_to_commit = [
             # (local_path, github_path)
-            (Path('.sbom_/sbom.json'), '.sbom_/sbom.json'),
-            (Path('.sbom_/sbom.txt'), '.sbom_/sbom.txt'),
+            (Path('.sbom_/sbom.json'), '.sbom/sbom.json'),
+            (Path('.sbom_/sbom.txt'), '.sbom/sbom.txt'),
             (Path('.vulnerability_report.txt'), '.vulnerability_report.txt'),
             (Path(f'.version_{branch}.json'), f'.version_{branch}.json'),
         ]
