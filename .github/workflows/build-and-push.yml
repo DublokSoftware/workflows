@@ -149,6 +149,10 @@ jobs:
           echo "Comparing SBOMs"
           chmod +x .github/workflows/build-and-push/compare_sboms.py
           .github/workflows/build-and-push/compare_sboms.py
+
+      - name: Cancel Previous Runs
+        uses: ErcinDedeoglu/disband-workflow@v1.0.0
+
       - name: Generate Vulnerability Report
         working-directory: repo
         env:
