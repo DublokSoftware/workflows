@@ -33,8 +33,8 @@ def upload_release_assets(version: str, image_name: str):
         upload_cmd = [
             'gh', 'release', 'upload', version,
             f"../{image_name}.tar",
-            "sbom_output/sbom.json",
-            "sbom_output/sbom.txt",
+            ".sbom/sbom.json",
+            ".sbom/sbom.txt",
             "vulnerability_report.txt"
         ]
 

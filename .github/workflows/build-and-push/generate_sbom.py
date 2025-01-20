@@ -53,7 +53,7 @@ def generate_sbom():
             '-e', 'FILE_SUFFIX=',
             '-e', 'FILE_NAME=sbom',
             '-v', '/var/run/docker.sock:/var/run/docker.sock',
-            '-v', f'{os.getcwd()}/sbom_output:/output',
+            '-v', f'{os.getcwd()}/.sbom:/output',
             '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
             'ghcr.io/dockforge/sbominify:latest'
         ]
@@ -66,7 +66,7 @@ def generate_sbom():
         logger.info("Successfully generated SBOM")
 
         # Log the location of the generated SBOMs
-        sbom_output_dir = Path(os.getcwd()) / 'sbom_output'
+        sbom_output_dir = Path(os.getcwd()) / '.sbom'
         sbom_files = list(sbom_output_dir.glob('*'))
         for sbom_file in sbom_files:
             logger.info(f"Generated SBOM location: {sbom_file}")

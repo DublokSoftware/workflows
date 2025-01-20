@@ -25,10 +25,10 @@ def organize_files():
     """Organize files into their correct locations."""
     try:
         # Move SBOM files
-        # if Path('sbom_output/sbom.json').exists():
-        #     shutil.copy2('sbom_output/sbom.json', '.sbom/sbom.json')
-        # if Path('sbom_output/sbom.txt').exists():
-        #     shutil.copy2('sbom_output/sbom.txt', '.sbom/sbom.txt')
+        # if Path('.sbom/sbom.json').exists():
+        #     shutil.copy2('.sbom/sbom.json', '.sbom/sbom.json')
+        # if Path('.sbom/sbom.txt').exists():
+        #     shutil.copy2('.sbom/sbom.txt', '.sbom/sbom.txt')
 
         # Create copy of vulnerability report without dot
         if Path('.vulnerability_report.txt').exists():
@@ -103,8 +103,8 @@ def commit_files(version: str, branch: str) -> bool:
         # Define files to commit
         files_to_commit = [
             # (local_path, github_path)
-            (Path('sbom_output/sbom.json'), '.sbom/sbom.json'),
-            (Path('sbom_output/sbom.txt'), '.sbom/sbom.txt'),
+            (Path('.sbom/sbom.json'), '.sbom/sbom.json'),
+            (Path('.sbom/sbom.txt'), '.sbom/sbom.txt'),
             (Path('.vulnerability_report.txt'), '.vulnerability_report.txt'),
             (Path(f'.version_{branch}.json'), f'.version_{branch}.json'),
         ]

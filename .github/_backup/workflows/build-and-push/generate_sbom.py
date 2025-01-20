@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def setup_output_directory():
     """Create output directory for SBOM if it doesn't exist."""
-    output_dir = Path('sbom_output')
+    output_dir = Path('.sbom')
     output_dir.mkdir(exist_ok=True)
     return output_dir
 
@@ -59,7 +59,7 @@ def generate_sbom():
             '-e', 'FILE_SUFFIX=',
             '-e', 'FILE_NAME=sbom',
             '-v', '/var/run/docker.sock:/var/run/docker.sock',
-            '-v', f'{os.getcwd()}/sbom_output:/output',
+            '-v', f'{os.getcwd()}/.sbom:/output',
             '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
             'ghcr.io/dockforge/sbominify:latest'
         ]
@@ -67,7 +67,7 @@ def generate_sbom():
         subprocess.run(sbom_cmd, check=True)
         logger.info("Successfully generated SBOM")
         
-        output_dir = Path('sbom_output')
+        output_dir = Path('.sbom')
         logger.info("Generated SBOM files:")
         for file in output_dir.iterdir():
             logger.info(f"- {file.name}")
@@ -121,7 +121,7 @@ def main():
         docker_login()
         generate_sbom()
 
-        output_dir = Path('sbom_output')
+        output_dir = Path('.sbom')
         
         # Update sbom.json in root
         json_file = output_dir / 'sbom.json'
