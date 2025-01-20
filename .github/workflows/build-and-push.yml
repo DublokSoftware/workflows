@@ -141,10 +141,12 @@ jobs:
         run: |
           echo "Listing existing Docker images:"
           docker images
-      - name: Extra step for scheduled events
-        if: github.event_name == 'schedule'
+      - name: Extra step for scheduled events (schedule)
+        if: github.event_name == 'workflow_dispatch'
+        working-directory: repo
         run: |
           echo "This step runs only if the workflow is triggered by a scheduled event."
+          ls -la
       - name: Generate Vulnerability Report
         working-directory: repo
         env:
