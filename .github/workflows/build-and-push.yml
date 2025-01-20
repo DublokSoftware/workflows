@@ -104,6 +104,7 @@ jobs:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: false
+          load: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
@@ -120,9 +121,8 @@ jobs:
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
-
-          # Save the Docker image locally
-          docker save $IMAGE_NAME:$VERSION -o "${IMAGE_NAME}_${VERSION}.tar"
+          # Save the Docker image locally using the full image name
+          docker save ${{ secrets.DOCKER_USERNAME }}/$IMAGE_NAME:$VERSION -o "${IMAGE_NAME}_${VERSION}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
