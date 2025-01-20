@@ -183,16 +183,17 @@ jobs:
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
       - name: Tag and push additional tags
-        run: |
-          # Get the existing image and tags
-          GHCR_SHA_TAG="${{ steps.meta.outputs.ghcr_sha_tag }}"
-          ALL_TAGS="${{ steps.meta.outputs.tags }}"
-          
-          # Read each tag and push
-          echo "$ALL_TAGS" | tr ',' '\n' | while read -r tag; do
-            if [ ! -z "$tag" ]; then
-              echo "Tagging and pushing: $tag"
-              docker tag $GHCR_SHA_TAG $tag
-              docker push $tag
-            fi
-          done
+        uses: docker/build-push-action@v5
+        with:
+          context: repo/${{ inputs.context_path }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=${{ inputs.image_name }}
+            org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          load: false
