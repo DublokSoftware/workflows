@@ -107,24 +107,23 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Save Docker image
+        run: |
+          set -e # Exit on any error
+          VERSION="${{ steps.version.outputs.full_version }}"
+          
+          # Pull and save GitHub Container Registry image
+          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
+          echo "Pulling GitHub Container Registry image: $GHCR_TAG"
+          docker pull $GHCR_TAG
+          echo "Saving GitHub Container Registry image: $GHCR_TAG"
+          docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
+
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
-          
-
-      # - name: Save Docker image
-      #   run: |
-      #     set -e # Exit on any error
-      #     VERSION="${{ steps.version.outputs.full_version }}"
-          
-      #     # Pull and save GitHub Container Registry image
-      #     REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-      #     GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
-      #     echo "Pulling GitHub Container Registry image: $GHCR_TAG"
-      #     docker pull $GHCR_TAG
-      #     echo "Saving GitHub Container Registry image: $GHCR_TAG"
-      #     docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
 
       # - name: Generate SBOM
       #   working-directory: repo
