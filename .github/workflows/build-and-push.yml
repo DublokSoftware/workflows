@@ -176,17 +176,26 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.full_version }}
+          IMAGE_NAME: ${{ inputs.image_name }}
         working-directory: repo
         run: |
-          VERSION="${{ steps.version.outputs.full_version }}"
-          BRANCH=${GITHUB_REF#refs/heads/}
+          chmod +x .github/workflows/build-and-push/upload_release_assets.py
+          .github/workflows/build-and-push/upload_release_assets.py
+      # - name: Upload release assets
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   working-directory: repo
+      #   run: |
+      #     VERSION="${{ steps.version.outputs.full_version }}"
+      #     BRANCH=${GITHUB_REF#refs/heads/}
           
-          # Copy files without dots to match release naming
-          cp .vulnerability_report.txt vulnerability_report.txt
+      #     # Copy files without dots to match release naming
+      #     cp .vulnerability_report.txt vulnerability_report.txt
           
-          echo "Uploading release assets for version $VERSION"
-          gh release upload "$VERSION" \
-            "../${{ inputs.image_name }}.tar" \
-            "sbom_output/sbom.json" \
-            "sbom_output/sbom.txt" \
-            "vulnerability_report.txt"
+      #     echo "Uploading release assets for version $VERSION"
+      #     gh release upload "$VERSION" \
+      #       "../${{ inputs.image_name }}.tar" \
+      #       "sbom_output/sbom.json" \
+      #       "sbom_output/sbom.txt" \
+      #       "vulnerability_report.txt"
