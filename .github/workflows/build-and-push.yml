@@ -111,6 +111,10 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: List existing Docker images
+        run: |
+          echo "Listing existing Docker images:"
+          docker images
       - name: Save Docker image
         run: |
           set -e # Exit on any error
