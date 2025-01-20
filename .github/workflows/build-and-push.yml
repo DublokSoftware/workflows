@@ -127,25 +127,23 @@ jobs:
           cd /tmp/oci-images
           tar xf /tmp/docker-images.tar
           
-          # Load AMD64 image
-          skopeo copy \
-            --override-arch amd64 \
-            --override-os linux \
-            "oci:/tmp/oci-images:$VERSION" \
-            "docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64"
-            
-          # Load ARM64 image  
-          skopeo copy \
-            --override-arch arm64 \
-            --override-os linux \
-            "oci:/tmp/oci-images:$VERSION" \
-            "docker-daemon:$DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64"
-      
+          # Get image digests from index.json
+          AMD64_DIGEST=$(jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest' index.json)
+          ARM64_DIGEST=$(jq -r '.manifests[] | select(.platform.architecture == "arm64") | .digest' index.json)
+          
+          # Tag AMD64 image
+          docker load < blobs/sha256/${AMD64_DIGEST#sha256:}
+          docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
+          
+          # Tag ARM64 image
+          docker load < blobs/sha256/${ARM64_DIGEST#sha256:}
+          docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
+          
           # Create manifest
           docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
             $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 \
             $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
-      
+    
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
