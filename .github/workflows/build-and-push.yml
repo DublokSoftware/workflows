@@ -98,13 +98,13 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
-      - name: Build and load amd64 image
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: repo/${{ inputs.context_path }}
-          platforms: linux/amd64
+          platforms: ${{ inputs.platforms }}
           push: false
-          load: true
+          outputs: type=docker,dest=/tmp/docker-images.tar
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
@@ -112,36 +112,25 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Build and load arm64 image  
-        uses: docker/build-push-action@v5
-        with:
-          context: repo/${{ inputs.context_path }}
-          platforms: linux/arm64
-          push: false
-          load: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            org.opencontainers.image.title=${{ inputs.image_name }}
-            org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      
+      - name: Load Docker images
+        run: |
+          docker load < /tmp/docker-images.tar
+      
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
-      - name: Save Docker images
+      
+      - name: Save Docker image
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
           DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
           
-          # Save AMD64 image
-          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 -o "${IMAGE_NAME}_${VERSION}_amd64.tar"
-          
-          # Save ARM64 image  
-          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64 -o "${IMAGE_NAME}_${VERSION}_arm64.tar"
+          # Save the Docker image
+          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION -o "${IMAGE_NAME}_${VERSION}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
@@ -201,20 +190,15 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
-      - name: Push multi-arch manifest
+      - name: Conditionally Push Docker image
         if: steps.sbom.outcome == 'success'
         run: |
+          set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
-          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
-          
-          # Load images back
-          docker load -i "${IMAGE_NAME}_${VERSION}_amd64.tar"
-          docker load -i "${IMAGE_NAME}_${VERSION}_arm64.tar"
-          
-          # Create and push manifest
-          docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
-            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 \
-            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
-            
-          docker manifest push $DOCKER_USERNAME/$IMAGE_NAME:$VERSION
+
+          # Load the Docker image from the saved file
+          docker load -i "${IMAGE_NAME}_${VERSION}.tar"
+
+          # Push the Docker image to the registry
+          docker push $IMAGE_NAME:$VERSION
