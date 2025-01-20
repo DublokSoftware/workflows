@@ -4,7 +4,15 @@ import sys
 import json
 import base64
 import requests
+import logging
 from typing import Dict, Optional
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 def get_version_file_content(github_token: str, github_repo: str, branch: str) -> Optional[Dict]:
     """Get content of version file from repository."""
@@ -41,14 +49,11 @@ def create_release(github_token: str, github_repo: str, version_data: Dict, sha:
         'Accept': 'application/vnd.github.v3+json'
     }
     url = f"https://api.github.com/repos/{github_repo}/releases"
-
     # Extract suffix if exists
     version = version_data['version']
     suffix = version.split('-')[1] if '-' in version else ''
-
     # Determine if it should be a pre-release
     is_prerelease = suffix.lower() in ['alpha', 'beta']
-
     # Create release notes with version and tags information
     release_notes = f"""Version {version}
 Build Number: {version_data['build_number']}
@@ -68,14 +73,14 @@ Docker Tags:
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code == 201:
-            print(f"Successfully created release: {version}")
+            logger.info(f"Successfully created release: {version}")
             return response.json()['upload_url']
         else:
-            print(f"Failed to create release. Status code: {response.status_code}")
-            print(f"Error message: {response.text}")
+            logger.error(f"Failed to create release. Status code: {response.status_code}")
+            logger.error(f"Error message: {response.text}")
             return None
     except Exception as e:
-        print(f"Exception occurred while creating release: {str(e)}")
+        logger.error(f"Exception occurred while creating release: {str(e)}")
         return None
 
 def main():
@@ -85,24 +90,37 @@ def main():
     branch = os.environ.get('GITHUB_REF').replace('refs/heads/', '')
     sha = os.environ.get('GITHUB_SHA')
     if not all([github_token, github_repo, branch, sha]):
-        print("Missing required environment variables")
+        logger.error("Missing required environment variables")
         sys.exit(1)
+
+    # Log environment variables
+    logger.info(f"GITHUB_TOKEN: {github_token}")
+    logger.info(f"GITHUB_REPOSITORY: {github_repo}")
+    logger.info(f"GITHUB_REF: {branch}")
+    logger.info(f"GITHUB_SHA: {sha}")
+
     # Get version information
     version_data = get_version_file_content(github_token, github_repo, branch)
     if not version_data:
-        print("Failed to get version information")
+        logger.error("Failed to get version information")
         sys.exit(1)
+
+    # Log version data
+    logger.info(f"Version data: {json.dumps(version_data, indent=2)}")
+
     # Create tag
     if not create_tag(github_token, github_repo, version_data['version'], sha):
-        print("Failed to create tag")
+        logger.error("Failed to create tag")
         sys.exit(1)
-    print(f"Successfully created tag: {version_data['version']}")
+    logger.info(f"Successfully created tag: {version_data['version']}")
+
     # Create release
     upload_url = create_release(github_token, github_repo, version_data, sha)
     if not upload_url:
-        print("Failed to create release")
+        logger.error("Failed to create release")
         sys.exit(1)
-    print(f"Successfully created release: {version_data['version']}")
+    logger.info(f"Successfully created release: {version_data['version']}")
+
     # Set output for GitHub Actions
     with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
         f.write(f"version={version_data['version']}\n")

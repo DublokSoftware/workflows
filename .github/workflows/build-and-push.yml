@@ -164,14 +164,14 @@ jobs:
           chmod +x .github/workflows/build-and-push/commit_files.py
           .github/workflows/build-and-push/commit_files.py
 
-      # - name: Create Release
-      #   id: release
-      #   working-directory: repo
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #   run: |
-      #     chmod +x .github/workflows/build-and-push/publish_release.py
-      #     .github/workflows/build-and-push/publish_release.py
+      - name: Create Release
+        id: release
+        working-directory: repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          chmod +x .github/workflows/build-and-push/publish_release.py
+          .github/workflows/build-and-push/publish_release.py
 
       # - name: Upload release assets
       #   env:
