@@ -144,6 +144,7 @@ jobs:
       - name: Compare SBOMs
         if: github.event_name == 'workflow_dispatch'
         working-directory: repo
+        id: compare_sboms
         run: |
           echo "Comparing SBOMs"
           chmod +x .github/workflows/build-and-push/compare_sboms.py
