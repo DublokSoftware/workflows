@@ -23,11 +23,9 @@ on:
       DOCKER_TOKEN:
         required: true
         description: "Docker Hub access token"
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
-
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -38,7 +36,6 @@ jobs:
       - name: Log event name
         run: |
           echo "Event name: ${{ github.event_name }}"
-
       - name: Determine trigger type
         run: |
           if [ "${{ github.event_name }}" == "push" ]; then
@@ -50,25 +47,21 @@ jobs:
           else
             echo "Workflow triggered by an unknown event: ${{ github.event_name }}"
           fi
-
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           path: repo
-
       - name: Checkout workflow repository
         uses: actions/checkout@v4
         with:
           repository: dubloksoftware/workflows
           ref: main
           path: workflows
-
       - name: Setup workflow files
         run: |
           mkdir -p repo/.github/workflows/build-and-push
           cp -r workflows/.github/workflows/build-and-push/* repo/.github/workflows/build-and-push/
           cd repo
-
       - name: Update version
         id: version
         working-directory: repo
@@ -78,26 +71,22 @@ jobs:
           pip install requests
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
-          
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
-
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Generate Docker Tags
         id: meta
         working-directory: repo
@@ -109,13 +98,12 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
-
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: false
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
@@ -123,25 +111,18 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
       - name: Save Docker image
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
-          
-          # Pull and save GitHub Container Registry image
-          REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-          GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
-          echo "Pulling GitHub Container Registry image: $GHCR_TAG"
-          docker pull $GHCR_TAG
-          echo "Saving GitHub Container Registry image: $GHCR_TAG"
-          docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
+          IMAGE_NAME="${{ inputs.image_name }}"
 
+          # Save the Docker image locally
+          docker save $IMAGE_NAME:$VERSION -o "${IMAGE_NAME}_${VERSION}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
-
       - name: Generate SBOM
         working-directory: repo
         env:
@@ -151,17 +132,14 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
-
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
-
       - name: Extra step for scheduled events
         if: github.event_name == 'schedule'
         run: |
           echo "This step runs only if the workflow is triggered by a scheduled event."
-
       - name: Generate Vulnerability Report
         working-directory: repo
         env:
@@ -171,12 +149,10 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
           .github/workflows/build-and-push/generate_vulnerability_report.py
-
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
-
       - name: Commit generated files
         working-directory: repo
         env:
@@ -185,7 +161,6 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/commit_files.py
           .github/workflows/build-and-push/commit_files.py
-
       - name: Create Release
         id: release
         working-directory: repo
@@ -194,7 +169,6 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/publish_release.py
           .github/workflows/build-and-push/publish_release.py
-
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -204,3 +178,15 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
+      - name: Conditionally Push Docker image
+        if: steps.sbom.outcome == 'success'
+        run: |
+          set -e # Exit on any error
+          VERSION="${{ steps.version.outputs.full_version }}"
+          IMAGE_NAME="${{ inputs.image_name }}"
+
+          # Load the Docker image from the saved file
+          docker load -i "${IMAGE_NAME}_${VERSION}.tar"
+
+          # Push the Docker image to the registry
+          docker push $IMAGE_NAME:$VERSION
