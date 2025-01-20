@@ -130,13 +130,18 @@ jobs:
         run: |
           echo "Listing existing Docker images:"
           docker images
-      - name: Save Docker image
+      - name: Save Docker images
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
-          # Save the Docker image locally using the full image name
-          docker save ${{ secrets.DOCKER_USERNAME }}/$IMAGE_NAME:$VERSION -o "${IMAGE_NAME}_${VERSION}.tar"
+          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
+          
+          # Save AMD64 image
+          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 -o "${IMAGE_NAME}_${VERSION}_amd64.tar"
+          
+          # Save ARM64 image  
+          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64 -o "${IMAGE_NAME}_${VERSION}_arm64.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
@@ -196,15 +201,20 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
-      - name: Conditionally Push Docker image
+      - name: Push multi-arch manifest
         if: steps.sbom.outcome == 'success'
         run: |
-          set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
-
-          # Load the Docker image from the saved file
-          docker load -i "${IMAGE_NAME}_${VERSION}.tar"
-
-          # Push the Docker image to the registry
-          docker push $IMAGE_NAME:$VERSION
+          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
+          
+          # Load images back
+          docker load -i "${IMAGE_NAME}_${VERSION}_amd64.tar"
+          docker load -i "${IMAGE_NAME}_${VERSION}_arm64.tar"
+          
+          # Create and push manifest
+          docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
+            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 \
+            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
+            
+          docker manifest push $DOCKER_USERNAME/$IMAGE_NAME:$VERSION
