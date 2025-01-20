@@ -71,7 +71,6 @@ jobs:
           pip install requests
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
@@ -98,16 +97,12 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
-
-
-
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
-          push: false
-          outputs: type=oci,dest=/tmp/docker-images.tar
+          push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
@@ -115,124 +110,22 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      
-      - name: Load Docker images
-        run: |
-          set -x  # Enable debug output
-          
-          VERSION="${{ steps.version.outputs.full_version }}"
-          IMAGE_NAME="${{ inputs.image_name }}"
-          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
-          
-          echo "Debug info:"
-          echo "VERSION: $VERSION"
-          echo "IMAGE_NAME: $IMAGE_NAME"
-          echo "DOCKER_USERNAME: $DOCKER_USERNAME"
-          
-          # Extract image manifests
-          mkdir -p /tmp/oci-images
-          cd /tmp/oci-images
-          tar xf /tmp/docker-images.tar
-          
-          echo "Contents of /tmp/oci-images:"
-          ls -la
-          
-          echo "Contents of index.json:"
-          cat index.json
-          
-          # Get image digests from index.json
-          AMD64_DIGEST=$(jq -r '.manifests[] | select(.platform.architecture == "amd64") | .digest' index.json)
-          ARM64_DIGEST=$(jq -r '.manifests[] | select(.platform.architecture == "arm64") | .digest' index.json)
-          
-          echo "AMD64_DIGEST: $AMD64_DIGEST"
-          echo "ARM64_DIGEST: $ARM64_DIGEST"
-          
-          # Create blob directory paths
-          AMD64_BLOB="blobs/sha256/${AMD64_DIGEST#sha256:}"
-          ARM64_BLOB="blobs/sha256/${ARM64_DIGEST#sha256:}"
-          
-          echo "AMD64_BLOB path: $AMD64_BLOB"
-          echo "ARM64_BLOB path: $ARM64_BLOB"
-          
-          echo "Contents of blobs/sha256:"
-          ls -la blobs/sha256/
-          
-          # Load and tag images
-          if [ -f "$AMD64_BLOB" ]; then
-            echo "Loading AMD64 image..."
-            docker load < "$AMD64_BLOB"
-            echo "Current docker images:"
-            docker images
-            echo "Tagging AMD64 image..."
-            docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
-            echo "Pushing AMD64 image..."
-            docker push $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64
-          else
-            echo "AMD64 blob not found at $AMD64_BLOB"
-          fi
-          
-          if [ -f "$ARM64_BLOB" ]; then
-            echo "Loading ARM64 image..."
-            docker load < "$ARM64_BLOB"
-            echo "Current docker images:"
-            docker images
-            echo "Tagging ARM64 image..."
-            docker tag $(docker images --quiet | head -n 1) $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
-            echo "Pushing ARM64 image..."
-            docker push $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
-          else
-            echo "ARM64 blob not found at $ARM64_BLOB"
-          fi
-          
-          echo "Current docker images after loading:"
-          docker images
-          
-          # Enable experimental features for manifest support
-          mkdir -p $HOME/.docker
-          echo '{"experimental": "enabled"}' > $HOME/.docker/config.json
-          
-          echo "Docker config:"
-          cat $HOME/.docker/config.json
-          
-          echo "Creating manifest for version $VERSION..."
-          # Create and push manifest
-          docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:$VERSION \
-            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 \
-            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
-          
-          echo "Pushing version manifest..."
-          docker manifest push $DOCKER_USERNAME/$IMAGE_NAME:$VERSION
-          
-          echo "Creating latest manifest..."
-          # Create and push latest manifest
-          docker manifest create $DOCKER_USERNAME/$IMAGE_NAME:latest \
-            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 \
-            $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64
-          
-          echo "Pushing latest manifest..."
-          docker manifest push $DOCKER_USERNAME/$IMAGE_NAME:latest
-    
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
           docker images
-      
-      - name: Save Docker images
-        run: |
-          set -e # Exit on any error
-          VERSION="${{ steps.version.outputs.full_version }}"
-          IMAGE_NAME="${{ inputs.image_name }}"
-          DOCKER_USERNAME="${{ secrets.DOCKER_USERNAME }}"
-          
-          # Save the AMD64 image
-          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-amd64 -o "${IMAGE_NAME}_${VERSION}_amd64.tar"
-          
-          # Save the ARM64 image
-          docker save $DOCKER_USERNAME/$IMAGE_NAME:$VERSION-arm64 -o "${IMAGE_NAME}_${VERSION}_arm64.tar"
-
-
-
-
+          - name: Save Docker image
+          run: |
+            set -e # Exit on any error
+            VERSION="${{ steps.version.outputs.full_version }}"
+  
+            # Pull and save GitHub Container Registry image
+            REPO_OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+            GHCR_TAG="ghcr.io/${REPO_OWNER}/${{ inputs.image_name }}:${VERSION}"
+            echo "Pulling GitHub Container Registry image: $GHCR_TAG"
+            docker pull $GHCR_TAG
+            echo "Saving GitHub Container Registry image: $GHCR_TAG"
+            docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
@@ -298,9 +191,7 @@ jobs:
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_NAME="${{ inputs.image_name }}"
-
           # Load the Docker image from the saved file
           docker load -i "${IMAGE_NAME}_${VERSION}.tar"
-
           # Push the Docker image to the registry
           docker push $IMAGE_NAME:$VERSION
