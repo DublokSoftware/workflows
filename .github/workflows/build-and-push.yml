@@ -182,13 +182,17 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
-      - name: Conditionally Push Docker image
-        if: steps.sbom.outcome == 'success'
+      - name: Tag and push additional tags
         run: |
-          set -e # Exit on any error
-          VERSION="${{ steps.version.outputs.full_version }}"
-          IMAGE_NAME="${{ inputs.image_name }}"
-          # Load the Docker image from the saved file
-          docker load -i "${IMAGE_NAME}_${VERSION}.tar"
-          # Push the Docker image to the registry
-          docker push $IMAGE_NAME:$VERSION
+          # Get the existing image and tags
+          GHCR_SHA_TAG="${{ steps.meta.outputs.ghcr_sha_tag }}"
+          ALL_TAGS="${{ steps.meta.outputs.tags }}"
+          
+          # Read each tag and push
+          echo "$ALL_TAGS" | tr ',' '\n' | while read -r tag; do
+            if [ ! -z "$tag" ]; then
+              echo "Tagging and pushing: $tag"
+              docker tag $GHCR_SHA_TAG $tag
+              docker push $tag
+            fi
+          done
