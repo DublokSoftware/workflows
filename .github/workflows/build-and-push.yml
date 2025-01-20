@@ -135,6 +135,11 @@ jobs:
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
 
+      - name: List existing Docker images
+        run: |
+          echo "Listing existing Docker images:"
+          docker images
+  
       - name: Generate Vulnerability Report
         working-directory: repo
         env:
@@ -145,14 +150,19 @@ jobs:
           chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
           .github/workflows/build-and-push/generate_vulnerability_report.py
 
-      # - name: Commit generated files
-      #   working-directory: repo
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      #     VERSION: ${{ steps.version.outputs.full_version }}
-      #   run: |
-      #     chmod +x .github/workflows/build-and-push/commit_files.py
-      #     .github/workflows/build-and-push/commit_files.py
+      - name: List existing Docker images
+        run: |
+          echo "Listing existing Docker images:"
+          docker images
+
+      - name: Commit generated files
+        working-directory: repo
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.full_version }}
+        run: |
+          chmod +x .github/workflows/build-and-push/commit_files.py
+          .github/workflows/build-and-push/commit_files.py
 
       # - name: Create Release
       #   id: release
