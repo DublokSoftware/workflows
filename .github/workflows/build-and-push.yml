@@ -107,21 +107,11 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Save Docker image
+      - name: List existing Docker images
         run: |
-          set -e # Exit on any error
-          VERSION="${{ steps.version.outputs.full_version }}"
-      
-          # Save the image to a tar file
-          IMAGE_TAGS="${{ steps.meta.outputs.tags }}"
-          echo "Saving Docker images: $IMAGE_TAGS"
-      
-          # Loop through each tag and save the image
-          for TAG in $(echo $IMAGE_TAGS | tr ',' ' '); do
-            echo "Saving Docker image: $TAG"
-            docker save $TAG -o "${TAG//\//_}.tar"
-          done
-        shell: /usr/bin/bash -e {0}
+          echo "Listing existing Docker images:"
+          docker images
+          
 
       # - name: Save Docker image
       #   run: |
