@@ -152,9 +152,12 @@ jobs:
 
       - name: Cancel workflow
         if: steps.compare_sboms.outputs.new_sbom == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-            echo "Condition met, cancelling workflow"          
-            exit 0
+          echo "Cancelling workflow"
+          chmod +x .github/workflows/build-and-push/cancel_workflow.py
+          .github/workflows/build-and-push/cancel_workflow.py
 
       - name: Generate Vulnerability Report
         working-directory: repo
