@@ -152,6 +152,7 @@ jobs:
 
       - name: Cancel workflow
         if: steps.compare_sboms.outputs.new_sbom == 'false'
+        working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
