@@ -34,7 +34,7 @@ def compare_sbom_files():
             sys.exit(0)
         else:
             print("SBOM files are identical")
-            print("Notice: No changes detected in SBOM files. Stopping workflow.")
+            print("Notice: No changes detected in SBOM files.")
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                 print(f"new_sbom=false", file=fh)
             sys.exit(0)

@@ -143,16 +143,14 @@ jobs:
           echo "Listing existing Docker images:"
           docker images
       - name: Compare SBOMs
-        if: github.event_name == 'workflow_dispatch'
         working-directory: repo
         id: compare_sboms
         run: |
           echo "Comparing SBOMs"
           chmod +x .github/workflows/build-and-push/compare_sboms.py
           .github/workflows/build-and-push/compare_sboms.py
-
       - name: Cancel workflow
-        if: steps.compare_sboms.outputs.new_sbom == 'false'
+        if: github.event_name == 'schedule' && steps.compare_sboms.outputs.new_sbom == 'false'
         working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
