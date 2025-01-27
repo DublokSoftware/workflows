@@ -79,7 +79,7 @@ def main():
     """Main function to orchestrate SBOM generation."""
     try:
         setup_output_directory()
-        docker_login()
+        # docker_login()
         generate_sbom()
 
     except Exception as e:

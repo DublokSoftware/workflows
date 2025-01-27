@@ -109,6 +109,8 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           IMAGE_NAME: ${{ inputs.image_name }}
           REPO_OWNER: ${{ github.repository_owner }}
+          PUSH_TO_DOCKERHUB: ${{ inputs.push_to_dockerhub }}
+          PUSH_TO_GHCR: ${{ inputs.push_to_ghcr }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
@@ -118,7 +120,7 @@ jobs:
           context: repo/${{ inputs.context_path }}
           platforms: ${{ inputs.platforms }}
           push: true
-          tags: ${{ steps.meta.outputs.ghcr_sha_tag }}
+          tags: ${{ steps.meta.outputs.sha_tag }}
           labels: |
             org.opencontainers.image.title=${{ inputs.image_name }}
             org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
@@ -136,13 +138,13 @@ jobs:
         run: |
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
-          GHCR_TAG="${{ steps.meta.outputs.ghcr_sha_tag }}"
+          IMAGE_TAG="${{ steps.meta.outputs.sha_tag }}"
           
-          echo "Pulling GitHub Container Registry image: $GHCR_TAG"
-          docker pull $GHCR_TAG
+          echo "Pulling image: $IMAGE_TAG"
+          docker pull $IMAGE_TAG
           
-          echo "Saving GitHub Container Registry image: $GHCR_TAG"
-          docker save $GHCR_TAG -o "${{ inputs.image_name }}.tar"
+          echo "Saving image: $IMAGE_TAG"
+          docker save $IMAGE_TAG -o "${{ inputs.image_name }}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
@@ -151,7 +153,7 @@ jobs:
         working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_TAG: ${{ steps.meta.outputs.ghcr_sha_tag }}
+          IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
@@ -180,7 +182,7 @@ jobs:
         working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_TAG: ${{ steps.meta.outputs.ghcr_sha_tag }}
+          IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
           .github/workflows/build-and-push/generate_vulnerability_report.py
