@@ -23,6 +23,8 @@ on:
       DOCKER_TOKEN:
         required: true
         description: "Docker Hub access token"
+      ENCRYPTION_KEY:
+        required: false
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
@@ -111,6 +113,9 @@ jobs:
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images:"
@@ -211,3 +216,6 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: false
           load: false
+          build-args: |
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
