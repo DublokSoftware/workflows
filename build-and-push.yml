@@ -114,7 +114,7 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
-      - name: Build & push the SHA tag
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: repo/${{ inputs.context_path }}
@@ -215,23 +215,21 @@ jobs:
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
-      - name: Tag existing manifest with additional tags
-        run: |
-          # We'll retrieve the multi-arch manifest's digest for the SHA tag
-          DIGEST=$(docker buildx imagetools inspect --raw ${{ steps.meta.outputs.sha_tag }} \
-            | jq -r '.manifests[0].digest')
-      
-          echo "Digest is $DIGEST"
-      
-          # Suppose steps.meta.outputs.tags is a comma-separated list:
-          # e.g., "ghcr.io/owner/repo:v1.0, ghcr.io/owner/repo:latest, docker.io/myuser/image:1.0, docker.io/myuser/image:latest"
-          for TAG in $(echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n'); do
-            # Trim any stray spaces:
-            TAG=$(echo "$TAG" | xargs)
-      
-            echo "Tagging $TAG"
-            # Create or append that tag to the existing multi-arch image
-            docker buildx imagetools create --tag "$TAG" "$DIGEST"
-          done
-      
-          echo "All additional tags have been created, referencing the same digest."
+      - name: Tag and push additional tags
+        uses: docker/build-push-action@v5
+        with:
+          context: repo/${{ inputs.context_path }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=${{ inputs.image_name }}
+            org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: false
+          load: false
+          build-args: |
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            BUILD_DATE=${{ github.event.repository.updated_at }}
