@@ -221,21 +221,11 @@ jobs:
           IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
           ADDITIONAL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          # Split the additional tags string into an array
           IFS=',' read -ra TAGS <<< "$ADDITIONAL_TAGS"
-          
-          # For each additional tag
           for TAG in "${TAGS[@]}"; do
-            # Trim whitespace
             TAG=$(echo $TAG | xargs)
             if [ "$TAG" != "$IMAGE_TAG" ]; then
-              echo "Tagging and pushing: $TAG"
-              # Tag for each platform
-              for PLATFORM in $(echo ${{ inputs.platforms }} | tr ',' ' '); do
-                # Create platform-specific tag
-                PLATFORM_SUFFIX=$(echo $PLATFORM | tr '/' '-')
-                docker tag "${IMAGE_TAG}--${PLATFORM_SUFFIX}" "${TAG}--${PLATFORM_SUFFIX}"
-                docker push "${TAG}--${PLATFORM_SUFFIX}"
-              done
+              echo "Creating manifest and pushing: $TAG"
+              docker buildx imagetools create -t "$TAG" "$IMAGE_TAG"
             fi
           done
