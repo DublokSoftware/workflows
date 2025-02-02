@@ -216,20 +216,26 @@ jobs:
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
       - name: Tag and push additional tags
-        uses: docker/build-push-action@v5
-        with:
-          context: repo/${{ inputs.context_path }}
-          platforms: ${{ inputs.platforms }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: |
-            org.opencontainers.image.title=${{ inputs.image_name }}
-            org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          provenance: false
-          load: false
-          build-args: |
-            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-            BUILD_DATE=${{ github.event.repository.updated_at }}
+        working-directory: repo
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
+          ADDITIONAL_TAGS: ${{ steps.meta.outputs.tags }}
+        run: |
+          # Split the additional tags string into an array
+          IFS=',' read -ra TAGS <<< "$ADDITIONAL_TAGS"
+          
+          # For each additional tag
+          for TAG in "${TAGS[@]}"; do
+            # Trim whitespace
+            TAG=$(echo $TAG | xargs)
+            if [ "$TAG" != "$IMAGE_TAG" ]; then
+              echo "Tagging and pushing: $TAG"
+              # Tag for each platform
+              for PLATFORM in $(echo ${{ inputs.platforms }} | tr ',' ' '); do
+                # Create platform-specific tag
+                PLATFORM_SUFFIX=$(echo $PLATFORM | tr '/' '-')
+                docker tag "${IMAGE_TAG}--${PLATFORM_SUFFIX}" "${TAG}--${PLATFORM_SUFFIX}"
+                docker push "${TAG}--${PLATFORM_SUFFIX}"
+              done
+            fi
+          done
