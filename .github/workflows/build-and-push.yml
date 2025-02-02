@@ -217,21 +217,20 @@ jobs:
           .github/workflows/build-and-push/upload_release_assets.py
       - name: Tag existing manifest with additional tags
         run: |
-          # We'll retrieve the multi-arch manifest's digest for the SHA tag
+          # 1. Get the top-level multi-arch manifest digest:
           DIGEST=$(docker buildx imagetools inspect --raw ${{ steps.meta.outputs.sha_tag }} \
-            | jq -r '.manifests[0].digest')
+            | jq -r '.digest')
       
-          echo "Digest is $DIGEST"
+          echo "Top-level multi-arch Digest is $DIGEST"
       
-          # Suppose steps.meta.outputs.tags is a comma-separated list:
-          # e.g., "ghcr.io/owner/repo:v1.0, ghcr.io/owner/repo:latest, docker.io/myuser/image:1.0, docker.io/myuser/image:latest"
+          # 2. Loop over your extra tags
           for TAG in $(echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n'); do
-            # Trim any stray spaces:
+            # Trim spaces
             TAG=$(echo "$TAG" | xargs)
       
             echo "Tagging $TAG"
-            # Create or append that tag to the existing multi-arch image
+            # 3. Create new tags pointing to the multi-arch digest
             docker buildx imagetools create --tag "$TAG" "$DIGEST"
           done
       
-          echo "All additional tags have been created, referencing the same digest."
+          echo "All additional tags created, referencing the multi-arch digest."
