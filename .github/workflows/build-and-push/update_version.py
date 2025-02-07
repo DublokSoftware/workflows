@@ -41,6 +41,8 @@ def main():
         github_token = os.environ['GH_TOKEN']
         github_repo = os.environ['GITHUB_REPOSITORY']
         branch = os.environ['GITHUB_REF'].replace('refs/heads/', '')
+        # Get optional project name
+        project_name = os.environ.get('PROJECT_NAME', '')
         # Get version information
         version_part, version_nums, suffix = get_version_parts(branch)
         print(f"Branch: {branch}")
@@ -51,7 +53,7 @@ def main():
             'Authorization': f'token {github_token}',
             'Accept': 'application/vnd.github.v3+json'
         }
-        filename = f".version_{branch}.json"
+        filename = f".version_{project_name}_{branch}.json" if project_name else f".version_{branch}.json"
         local_path = os.path.abspath(filename)
         url = f"https://api.github.com/repos/{github_repo}/contents/{filename}"
         print(f"Local file path: {local_path}")
@@ -84,23 +86,6 @@ def main():
             json.dump(version_data, f, indent=2)
         print(f"File saved locally at: {local_path}")
         print(f"New file content: {version_data}")
-
-        # Encode content for GitHub API
-        # content = base64.b64encode(json.dumps(version_data, indent=2).encode()).decode()
-        # Prepare update data
-        # data = {
-        #     'message': f'Update version to {version_data["version"]}',
-        #     'content': content,
-        #     'branch': branch  # Specify branch for update
-        # }
-        # if sha:
-        #     data['sha'] = sha
-        # Update or create file
-        # response = requests.put(url, headers=headers, json=data)
-        # if not response.ok:
-        #     print(f"Error updating file: {response.status_code}")
-        #     print(response.text)
-        #     sys.exit(1)
 
         # Set GitHub Actions outputs
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:

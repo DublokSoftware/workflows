@@ -2,6 +2,10 @@ name: Reusable Docker Build and Push
 on:
   workflow_call:
     inputs:
+      project_name:
+        required: false
+        type: string
+        description: "Project name"
       image_name:
         required: true
         type: string
@@ -85,6 +89,7 @@ jobs:
         working-directory: repo
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           pip install requests
           chmod +x .github/workflows/build-and-push/update_version.py
@@ -116,6 +121,7 @@ jobs:
           REPO_OWNER: ${{ github.repository_owner }}
           PUSH_TO_DOCKERHUB: ${{ inputs.push_to_dockerhub }}
           PUSH_TO_GHCR: ${{ inputs.push_to_ghcr }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
@@ -160,6 +166,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
@@ -170,6 +177,8 @@ jobs:
       - name: Compare SBOMs
         working-directory: repo
         id: compare_sboms
+        env:
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           echo "Comparing SBOMs"
           chmod +x .github/workflows/build-and-push/compare_sboms.py
@@ -189,6 +198,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
           .github/workflows/build-and-push/generate_vulnerability_report.py
@@ -201,6 +211,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.full_version }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           chmod +x .github/workflows/build-and-push/commit_files.py
           .github/workflows/build-and-push/commit_files.py
@@ -209,6 +220,7 @@ jobs:
         working-directory: repo
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           chmod +x .github/workflows/build-and-push/publish_release.py
           .github/workflows/build-and-push/publish_release.py
@@ -217,6 +229,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.full_version }}
           IMAGE_NAME: ${{ inputs.image_name }}
+          PROJECT_NAME: ${{ inputs.project_name }}
         working-directory: repo
         run: |
           chmod +x .github/workflows/build-and-push/upload_release_assets.py

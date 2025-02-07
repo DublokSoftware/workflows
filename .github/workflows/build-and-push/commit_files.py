@@ -17,23 +17,35 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def get_directory_names():
+    """Generate directory names based on project name if available."""
+    project_name = os.environ.get('PROJECT_NAME', '')
+    if project_name:
+        return {
+            'sbom_old': f'.sbom_{project_name}_',
+            'sbom_new': f'.sbom_{project_name}',
+            'vuln_report': f'.vulnerability_report_{project_name}.txt',
+            'vuln_report_no_dot': f'vulnerability_report_{project_name}.txt'
+        }
+    return {
+        'sbom_old': '.sbom_',
+        'sbom_new': '.sbom',
+        'vuln_report': '.vulnerability_report.txt',
+        'vuln_report_no_dot': 'vulnerability_report.txt'
+    }
+
 def setup_directories():
     """Create necessary directories."""
-    Path('.sbom_').mkdir(exist_ok=True)
+    dirs = get_directory_names()
+    Path(dirs['sbom_old']).mkdir(exist_ok=True)
 
 def organize_files():
     """Organize files into their correct locations."""
     try:
-        # Move SBOM files
-        # if Path('.sbom_/sbom.json').exists():
-        #     shutil.copy2('.sbom_/sbom.json', '.sbom_/sbom.json')
-        # if Path('.sbom_/sbom.txt').exists():
-        #     shutil.copy2('.sbom_/sbom.txt', '.sbom_/sbom.txt')
-
+        dirs = get_directory_names()
         # Create copy of vulnerability report without dot
-        if Path('.vulnerability_report.txt').exists():
-            shutil.copy2('.vulnerability_report.txt', 'vulnerability_report.txt')
-
+        if Path(dirs['vuln_report']).exists():
+            shutil.copy2(dirs['vuln_report'], dirs['vuln_report_no_dot'])
         logger.info("Successfully organized files")
     except Exception as e:
         logger.error(f"Failed to organize files: {e}")
@@ -42,7 +54,8 @@ def organize_files():
 def get_version_data(branch: str) -> Optional[Dict]:
     """Read the current version file."""
     try:
-        version_file = Path(f'.version_{branch}.json')
+        project_name = os.environ.get('PROJECT_NAME', '')
+        version_file = Path(f'.version_{project_name}_{branch}.json' if project_name else f'.version_{branch}.json')
         if version_file.exists():
             with open(version_file, 'r') as f:
                 return json.load(f)
@@ -54,18 +67,15 @@ def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_
     """Update or create a file in GitHub repository using the API."""
     try:
         url = f'https://api.github.com/repos/{github_repo}/contents/{github_path}'
-
         # Read file content
         with open(file_path, 'rb') as f:
             content = base64.b64encode(f.read()).decode()
         # Check if file exists
         response = requests.get(url, headers=headers)
-
         data = {
             'message': commit_message,
             'content': content,
         }
-
         if response.status_code == 200:
             # File exists, include its SHA
             data['sha'] = response.json()['sha']
@@ -83,12 +93,15 @@ def commit_files(version: str, branch: str) -> bool:
     try:
         github_token = os.environ['GITHUB_TOKEN']
         github_repo = os.environ['GITHUB_REPOSITORY']
+        project_name = os.environ.get('PROJECT_NAME', '')
+        dirs = get_directory_names()
 
         # First get the current version data
         version_data = get_version_data(branch)
         if not version_data:
             logger.error("Could not read version data")
             return False
+
         headers = {
             'Authorization': f'token {github_token}',
             'Accept': 'application/vnd.github.v3+json'
@@ -103,11 +116,13 @@ def commit_files(version: str, branch: str) -> bool:
         # Define files to commit
         files_to_commit = [
             # (local_path, github_path)
-            (Path('.sbom_/sbom.json'), '.sbom/sbom.json'),
-            (Path('.sbom_/sbom.txt'), '.sbom/sbom.txt'),
-            (Path('.vulnerability_report.txt'), '.vulnerability_report.txt'),
-            (Path(f'.version_{branch}.json'), f'.version_{branch}.json'),
+            (Path(f"{dirs['sbom_old']}/sbom.json"), f"{dirs['sbom_new']}/sbom.json"),
+            (Path(f"{dirs['sbom_old']}/sbom.txt"), f"{dirs['sbom_new']}/sbom.txt"),
+            (Path(dirs['vuln_report']), dirs['vuln_report']),
+            (Path(f'.version_{project_name}_{branch}.json' if project_name else f'.version_{branch}.json'),
+             f'.version_{project_name}_{branch}.json' if project_name else f'.version_{branch}.json'),
         ]
+
         success = True
         for local_path, github_path in files_to_commit:
             if local_path.exists():
@@ -129,6 +144,7 @@ def main():
         if not version or not branch:
             logger.error("Missing required environment variables")
             sys.exit(1)
+
         # Wait a moment for version file to be updated
         time.sleep(2)
 
@@ -139,6 +155,7 @@ def main():
         else:
             logger.error("Could not read version file")
             sys.exit(1)
+
         if not commit_files(version, branch):
             logger.error("Failed to commit some files")
             sys.exit(1)

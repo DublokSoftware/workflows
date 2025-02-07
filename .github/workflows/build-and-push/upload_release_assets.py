@@ -13,11 +13,31 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def get_file_paths():
+    """Generate file paths based on project name if available."""
+    project_name = os.environ.get('PROJECT_NAME', '')
+    if project_name:
+        return {
+            'vuln_report_dot': f'.vulnerability_report_{project_name}.txt',
+            'vuln_report_no_dot': f'vulnerability_report_{project_name}.txt',
+            'sbom_dir': f'.sbom_{project_name}_',
+            'sbom_json': f'.sbom_{project_name}_/sbom.json',
+            'sbom_txt': f'.sbom_{project_name}_/sbom.txt'
+        }
+    return {
+        'vuln_report_dot': '.vulnerability_report.txt',
+        'vuln_report_no_dot': 'vulnerability_report.txt',
+        'sbom_dir': '.sbom_',
+        'sbom_json': '.sbom_/sbom.json',
+        'sbom_txt': '.sbom_/sbom.txt'
+    }
+
 def copy_files():
     """Copy files without dots to match release naming."""
     try:
-        if Path('.vulnerability_report.txt').exists():
-            shutil.copy2('.vulnerability_report.txt', 'vulnerability_report.txt')
+        paths = get_file_paths()
+        if Path(paths['vuln_report_dot']).exists():
+            shutil.copy2(paths['vuln_report_dot'], paths['vuln_report_no_dot'])
         logger.info("Successfully copied files")
     except Exception as e:
         logger.error(f"Failed to copy files: {e}")
@@ -29,13 +49,15 @@ def upload_release_assets(version: str, image_name: str):
         # Copy files without dots to match release naming
         copy_files()
 
+        paths = get_file_paths()
+
         # Prepare the upload command
         upload_cmd = [
             'gh', 'release', 'upload', version,
             f"../{image_name}.tar",
-            ".sbom_/sbom.json",
-            ".sbom_/sbom.txt",
-            "vulnerability_report.txt"
+            paths['sbom_json'],
+            paths['sbom_txt'],
+            paths['vuln_report_no_dot']
         ]
 
         # Log the upload command

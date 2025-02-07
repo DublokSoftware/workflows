@@ -35,6 +35,7 @@ class GitHubReleaseManager:
             'Accept': 'application/vnd.github.v3+json'
         }
         self.base_url = f"https://api.github.com/repos/{repo}"
+        self.project_name = os.environ.get('PROJECT_NAME', '')
 
     def _make_request(self, method: str, endpoint: str, data: Dict = None, 
                      max_retries: int = 3, retry_delay: int = 2) -> requests.Response:
@@ -79,9 +80,21 @@ class GitHubReleaseManager:
             response.text if 'response' in locals() else None
         )
 
+    def get_version_file_name(self) -> str:
+        """Get version file name based on project name if available"""
+        return f".version_{self.project_name}_{self.branch}.json" if self.project_name else f".version_{self.branch}.json"
+
+    def get_tag_name(self, version: str) -> str:
+        """Get tag name based on project name if available"""
+        return f"{self.project_name}-{version}" if self.project_name else version
+
+    def get_release_name(self, version: str) -> str:
+        """Get release name based on project name if available"""
+        return f"Release {self.project_name} {version}" if self.project_name else f"Release {version}"
+
     def get_version_file_content(self) -> Dict:
         """Get and parse version file content"""
-        version_file = f".version_{self.branch}.json"
+        version_file = self.get_version_file_name()
         response = self._make_request('GET', f"contents/{version_file}")
         
         if response.status_code == 404:
@@ -146,15 +159,18 @@ class GitHubReleaseManager:
         suffix = version.split('-')[1] if '-' in version else ''
         is_prerelease = suffix.lower() in ['alpha', 'beta', 'rc']
         
+        tag_name = self.get_tag_name(version)
+        release_name = self.get_release_name(version)
+        
         release_notes = self._generate_release_notes(version_data, is_prerelease)
         
         response = self._make_request(
             'POST',
             "releases",
             data={
-                'tag_name': version,
+                'tag_name': tag_name,
                 'target_commitish': self.sha,
-                'name': f"Release {version}",
+                'name': release_name,
                 'body': release_notes,
                 'draft': False,
                 'prerelease': is_prerelease
@@ -163,12 +179,14 @@ class GitHubReleaseManager:
         
         return response.json()['upload_url']
 
-    def _generate_release_notes(self, version_data: Dict, is_prerelease: bool) -> str:
+    def _generate_release_notes(self, version__prerelease: bool) -> str:
         """Generate formatted release notes"""
-        return f"""# Release {version_data['version']}
+        project_info = f"Project: {self.project_name}\n" if self.project_name else ""
+        
+        return f"""# {self.get_release_name(version_data['version'])}
 
 ## Release Information
-- Version: {version_data['version']}
+{project_info}- Version: {version_data['version']}
 - Build Number: {version_data['build_number']}
 - Branch: {version_data['branch']}
 - Release Type: {'Pre-release' if is_prerelease else 'Stable Release'}
@@ -210,17 +228,18 @@ def main():
         version_data = manager.get_version_file_content()
         logger.info(f"Version data: {json.dumps(version_data, indent=2)}")
 
-        # Create tag
-        manager.create_tag(version_data['version'])
-        logger.info(f"Successfully created tag: {version_data['version']}")
+        # Create tag with project name if available
+        tag_name = manager.get_tag_name(version_data['version'])
+        manager.create_tag(tag_name)
+        logger.info(f"Successfully created tag: {tag_name}")
 
         # Create release
         upload_url = manager.create_release(version_data)
-        logger.info(f"Successfully created release: {version_data['version']}")
+        logger.info(f"Successfully created release: {tag_name}")
 
         # Set output for GitHub Actions
         with open(os.environ['GITHUB_OUTPUT'], 'a') as f:
-            f.write(f"version={version_data['version']}\n")
+            f.write(f"version={tag_name}\n")
             f.write(f"release_created=true\n")
             f.write(f"upload_url={upload_url}\n")
 

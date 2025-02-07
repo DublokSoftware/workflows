@@ -2,10 +2,20 @@
 import os
 import sys
 
+def get_sbom_paths():
+    """Generate SBOM paths based on project name if available."""
+    project_name = os.environ.get('PROJECT_NAME', '')
+    if project_name:
+        old_sbom_path = f'.sbom_{project_name}_/sbom.txt'
+        new_sbom_path = f'.sbom_{project_name}/sbom.txt'
+    else:
+        old_sbom_path = '.sbom_/sbom.txt'
+        new_sbom_path = '.sbom/sbom.txt'
+    return old_sbom_path, new_sbom_path
+
 def compare_sbom_files():
-    # Define paths for old and new SBOM files
-    old_sbom_path = '.sbom_/sbom.txt'
-    new_sbom_path = '.sbom/sbom.txt'
+    # Get paths for old and new SBOM files
+    old_sbom_path, new_sbom_path = get_sbom_paths()
     
     # Check if both files exist
     if not os.path.exists(new_sbom_path):
@@ -38,7 +48,6 @@ def compare_sbom_files():
             with open(os.environ['GITHUB_OUTPUT'], 'a') as fh:
                 print(f"new_sbom=false", file=fh)
             sys.exit(0)
-
     except Exception as e:
         print(f"Error comparing SBOM files: {str(e)}")
         sys.exit(1)
