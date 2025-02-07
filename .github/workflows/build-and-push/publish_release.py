@@ -179,7 +179,7 @@ class GitHubReleaseManager:
         
         return response.json()['upload_url']
 
-    def _generate_release_notes(self, version__prerelease: bool) -> str:
+    def _generate_release_notes(self, version_data: Dict, is_prerelease: bool) -> str:
         """Generate formatted release notes"""
         project_info = f"Project: {self.project_name}\n" if self.project_name else ""
         
