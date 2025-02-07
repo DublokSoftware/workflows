@@ -16,6 +16,11 @@ on:
         type: string
         default: 'src'
         description: "Docker build context path"
+      dockerfile_path:
+        required: false
+        type: string
+        default: 'Dockerfile'
+        description: "Path to Dockerfile relative to repository root"
       push_to_dockerhub:
         required: false
         type: boolean
@@ -118,6 +123,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: repo/${{ inputs.context_path }}
+          file: repo/${{ inputs.dockerfile_path }}
           platforms: ${{ inputs.platforms }}
           push: true
           tags: ${{ steps.meta.outputs.sha_tag }}
