@@ -22,14 +22,16 @@ def get_file_paths():
             'vuln_report_no_dot': f'vulnerability_report_{project_name}.txt',
             'sbom_dir': f'.sbom_{project_name}_',
             'sbom_json': f'.sbom_{project_name}_/sbom.json',
-            'sbom_txt': f'.sbom_{project_name}_/sbom.txt'
+            'sbom_txt': f'.sbom_{project_name}_/sbom.txt',
+            'version_prefix': f'{project_name}-'
         }
     return {
         'vuln_report_dot': '.vulnerability_report.txt',
         'vuln_report_no_dot': 'vulnerability_report.txt',
         'sbom_dir': '.sbom_',
         'sbom_json': '.sbom_/sbom.json',
-        'sbom_txt': '.sbom_/sbom.txt'
+        'sbom_txt': '.sbom_/sbom.txt',
+        'version_prefix': ''
     }
 
 def copy_files():
@@ -50,10 +52,13 @@ def upload_release_assets(version: str, image_name: str):
         copy_files()
 
         paths = get_file_paths()
+        
+        # Construct version with optional prefix
+        versioned_tag = f"{paths['version_prefix']}{version}"
 
         # Prepare the upload command
         upload_cmd = [
-            'gh', 'release', 'upload', version,
+            'gh', 'release', 'upload', versioned_tag,
             f"../{image_name}.tar",
             paths['sbom_json'],
             paths['sbom_txt'],
@@ -61,11 +66,11 @@ def upload_release_assets(version: str, image_name: str):
         ]
 
         # Log the upload command
-        logger.info(f"Uploading release assets for version {version} with command: {upload_cmd}")
+        logger.info(f"Uploading release assets for version {versioned_tag} with command: {upload_cmd}")
 
         # Run the upload command
         subprocess.run(upload_cmd, check=True)
-        logger.info(f"Successfully uploaded release assets for version {version}")
+        logger.info(f"Successfully uploaded release assets for version {versioned_tag}")
     except Exception as e:
         logger.error(f"Failed to upload release assets: {e}")
         raise
