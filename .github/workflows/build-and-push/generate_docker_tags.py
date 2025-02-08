@@ -41,12 +41,21 @@ def generate_docker_tags(tags_json: str, docker_username: str, image_name: str, 
         ghcr_sha_tag = f"ghcr.io/{repo_owner}/{image_name}:{short_sha}"
         dockerhub_sha_tag = f"{docker_username.lower()}/{image_name}:{short_sha}"
         
-        # Combine all tags into a comma-separated list
-        all_tags = ""
+        # Initialize empty all_tags
+        all_tags = []
+
+        # Add Docker Hub tags if enabled
         if push_to_dockerhub:
-            all_tags = ','.join(dockerhub_tags) + f",{dockerhub_sha_tag}"
+            all_tags.extend(dockerhub_tags)
+            all_tags.append(dockerhub_sha_tag)
+
+        # Add GHCR tags if enabled
         if push_to_ghcr:
-            all_tags = ','.join(ghcr_tags) + f",{ghcr_sha_tag}"
+            all_tags.extend(ghcr_tags)
+            all_tags.append(ghcr_sha_tag)
+
+        # Join all tags with commas
+        all_tags = ','.join(all_tags) if all_tags else ""
         sha_tag = ""
         if push_to_ghcr:
             sha_tag = ghcr_sha_tag
