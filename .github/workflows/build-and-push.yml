@@ -62,9 +62,11 @@ jobs:
     steps:
       - name: Log event name
         run: |
+          echo "### Log event name"
           echo "Event name: ${{ github.event_name }}"
       - name: Determine trigger type
         run: |
+          echo "### Determine trigger type"
           if [ "${{ github.event_name }}" == "push" ]; then
             echo "Workflow triggered by a push event."
           elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
@@ -86,6 +88,7 @@ jobs:
           path: workflows
       - name: Setup workflow files
         run: |
+          echo "### Setup workflow files"
           mkdir -p repo/.github/workflows/build-and-push
           cp -r workflows/.github/workflows/build-and-push/* repo/.github/workflows/build-and-push/
           cd repo
@@ -96,6 +99,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
+          echo "### Updating version"
           pip install --break-system-packages requests
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
@@ -128,6 +132,7 @@ jobs:
           PUSH_TO_GHCR: ${{ inputs.push_to_ghcr }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
+          echo "### Generating Docker Tags"
           chmod +x .github/workflows/build-and-push/generate_docker_tags.py
           .github/workflows/build-and-push/generate_docker_tags.py
       - name: Build and push Docker image
@@ -149,10 +154,11 @@ jobs:
             BUILD_DATE=${{ github.event.repository.updated_at }}
       - name: List existing Docker images
         run: |
-          echo "Listing existing Docker images:"
+          echo "Listing existing Docker images"
           docker images
       - name: Save Docker image
         run: |
+          echo "### Save Docker image"
           set -e # Exit on any error
           VERSION="${{ steps.version.outputs.full_version }}"
           IMAGE_TAG="${{ steps.meta.outputs.sha_tag }}"
@@ -164,7 +170,7 @@ jobs:
           docker save $IMAGE_TAG -o "${{ inputs.image_name }}.tar"
       - name: List existing Docker images
         run: |
-          echo "Listing existing Docker images:"
+          echo "Listing existing Docker images"
           docker images
       - name: Generate SBOM
         working-directory: repo
@@ -173,11 +179,12 @@ jobs:
           IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
+          echo "### Generate SBOM"
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
       - name: List existing Docker images
         run: |
-          echo "Listing existing Docker images:"
+          echo "List existing Docker images"
           docker images
       - name: Compare SBOMs
         working-directory: repo
@@ -194,7 +201,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Cancelling workflow"
+          echo "Cancel workflow"
           chmod +x .github/workflows/build-and-push/cancel_workflow.py
           .github/workflows/build-and-push/cancel_workflow.py
 
@@ -205,11 +212,12 @@ jobs:
           IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
+          echo "### Generate Vulnerability Report"
           chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
           .github/workflows/build-and-push/generate_vulnerability_report.py
       - name: List existing Docker images
         run: |
-          echo "Listing existing Docker images:"
+          echo "List existing Docker images"
           docker images
       - name: Commit generated files
         working-directory: repo
@@ -218,6 +226,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.full_version }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
+          echo "### Commit generated files"
           chmod +x .github/workflows/build-and-push/commit_files.py
           .github/workflows/build-and-push/commit_files.py
       - name: Create Release
@@ -227,6 +236,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
+          echo "### Create Release"
           chmod +x .github/workflows/build-and-push/publish_release.py
           .github/workflows/build-and-push/publish_release.py
       - name: Upload release assets
@@ -237,6 +247,7 @@ jobs:
           PROJECT_NAME: ${{ inputs.project_name }}
         working-directory: repo
         run: |
+          echo "### Upload release assets"
           chmod +x .github/workflows/build-and-push/upload_release_assets.py
           .github/workflows/build-and-push/upload_release_assets.py
       - name: Tag and push additional tags
@@ -245,6 +256,7 @@ jobs:
           IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
           ADDITIONAL_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
+          echo "### Tag and push additional tags"
           IFS=',' read -ra TAGS <<< "$ADDITIONAL_TAGS"
           for TAG in "${TAGS[@]}"; do
             TAG=$(echo $TAG | xargs)
