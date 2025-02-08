@@ -2,6 +2,11 @@ name: Reusable Docker Build and Push
 on:
   workflow_call:
     inputs:
+      runner:
+        required: false
+        type: string
+        default: 'ubuntu-latest'
+        description: "Runner to use for the workflow"
       project_name:
         required: false
         type: string
@@ -49,7 +54,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     permissions:
       contents: write
       packages: write
