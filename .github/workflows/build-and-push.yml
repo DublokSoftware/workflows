@@ -152,22 +152,22 @@ jobs:
           build-args: |
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
-      - name: List existing Docker images
-        run: |
-          echo "Listing existing Docker images"
-          docker images
-      - name: Save Docker image
-        run: |
-          echo "### Save Docker image"
-          set -e # Exit on any error
-          VERSION="${{ steps.version.outputs.full_version }}"
-          IMAGE_TAG="${{ steps.meta.outputs.sha_tag }}"
+      # - name: List existing Docker images
+      #   run: |
+      #     echo "Listing existing Docker images"
+      #     docker images
+      # - name: Save Docker image
+      #   run: |
+      #     echo "### Save Docker image"
+      #     set -e # Exit on any error
+      #     VERSION="${{ steps.version.outputs.full_version }}"
+      #     IMAGE_TAG="${{ steps.meta.outputs.sha_tag }}"
           
-          echo "Pulling image: $IMAGE_TAG"
-          docker pull $IMAGE_TAG
+      #     echo "Pulling image: $IMAGE_TAG"
+      #     docker pull $IMAGE_TAG
           
-          echo "Saving image: $IMAGE_TAG"
-          docker save $IMAGE_TAG -o "${{ inputs.image_name }}.tar"
+      #     echo "Saving image: $IMAGE_TAG"
+      #     docker save $IMAGE_TAG -o "${{ inputs.image_name }}.tar"
       - name: List existing Docker images
         run: |
           echo "Listing existing Docker images"
@@ -182,86 +182,86 @@ jobs:
           echo "### Generate SBOM"
           chmod +x .github/workflows/build-and-push/generate_sbom.py
           .github/workflows/build-and-push/generate_sbom.py
-      - name: List existing Docker images
-        run: |
-          echo "List existing Docker images"
-          docker images
-      - name: Compare SBOMs
-        working-directory: repo
-        id: compare_sboms
-        env:
-          PROJECT_NAME: ${{ inputs.project_name }}
-        run: |
-          echo "Comparing SBOMs"
-          chmod +x .github/workflows/build-and-push/compare_sboms.py
-          .github/workflows/build-and-push/compare_sboms.py
-      - name: Cancel workflow
-        if: github.event_name == 'schedule' && steps.compare_sboms.outputs.new_sbom == 'false'
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Cancel workflow"
-          chmod +x .github/workflows/build-and-push/cancel_workflow.py
-          .github/workflows/build-and-push/cancel_workflow.py
+      # - name: List existing Docker images
+      #   run: |
+      #     echo "List existing Docker images"
+      #     docker images
+      # - name: Compare SBOMs
+      #   working-directory: repo
+      #   id: compare_sboms
+      #   env:
+      #     PROJECT_NAME: ${{ inputs.project_name }}
+      #   run: |
+      #     echo "Comparing SBOMs"
+      #     chmod +x .github/workflows/build-and-push/compare_sboms.py
+      #     .github/workflows/build-and-push/compare_sboms.py
+      # - name: Cancel workflow
+      #   if: github.event_name == 'schedule' && steps.compare_sboms.outputs.new_sbom == 'false'
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     echo "Cancel workflow"
+      #     chmod +x .github/workflows/build-and-push/cancel_workflow.py
+      #     .github/workflows/build-and-push/cancel_workflow.py
 
-      - name: Generate Vulnerability Report
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
-          PROJECT_NAME: ${{ inputs.project_name }}
-        run: |
-          echo "### Generate Vulnerability Report"
-          chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
-          .github/workflows/build-and-push/generate_vulnerability_report.py
-      - name: List existing Docker images
-        run: |
-          echo "List existing Docker images"
-          docker images
-      - name: Commit generated files
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.full_version }}
-          PROJECT_NAME: ${{ inputs.project_name }}
-        run: |
-          echo "### Commit generated files"
-          chmod +x .github/workflows/build-and-push/commit_files.py
-          .github/workflows/build-and-push/commit_files.py
-      - name: Create Release
-        id: release
-        working-directory: repo
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROJECT_NAME: ${{ inputs.project_name }}
-        run: |
-          echo "### Create Release"
-          chmod +x .github/workflows/build-and-push/publish_release.py
-          .github/workflows/build-and-push/publish_release.py
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.full_version }}
-          IMAGE_NAME: ${{ inputs.image_name }}
-          PROJECT_NAME: ${{ inputs.project_name }}
-        working-directory: repo
-        run: |
-          echo "### Upload release assets"
-          chmod +x .github/workflows/build-and-push/upload_release_assets.py
-          .github/workflows/build-and-push/upload_release_assets.py
-      - name: Tag and push additional tags
-        working-directory: repo
-        env:
-          IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
-          ADDITIONAL_TAGS: ${{ steps.meta.outputs.tags }}
-        run: |
-          echo "### Tag and push additional tags"
-          IFS=',' read -ra TAGS <<< "$ADDITIONAL_TAGS"
-          for TAG in "${TAGS[@]}"; do
-            TAG=$(echo $TAG | xargs)
-            if [ "$TAG" != "$IMAGE_TAG" ]; then
-              echo "Creating manifest and pushing: $TAG"
-              docker buildx imagetools create -t "$TAG" "$IMAGE_TAG"
-            fi
-          done
+      # - name: Generate Vulnerability Report
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
+      #     PROJECT_NAME: ${{ inputs.project_name }}
+      #   run: |
+      #     echo "### Generate Vulnerability Report"
+      #     chmod +x .github/workflows/build-and-push/generate_vulnerability_report.py
+      #     .github/workflows/build-and-push/generate_vulnerability_report.py
+      # - name: List existing Docker images
+      #   run: |
+      #     echo "List existing Docker images"
+      #     docker images
+      # - name: Commit generated files
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     VERSION: ${{ steps.version.outputs.full_version }}
+      #     PROJECT_NAME: ${{ inputs.project_name }}
+      #   run: |
+      #     echo "### Commit generated files"
+      #     chmod +x .github/workflows/build-and-push/commit_files.py
+      #     .github/workflows/build-and-push/commit_files.py
+      # - name: Create Release
+      #   id: release
+      #   working-directory: repo
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     PROJECT_NAME: ${{ inputs.project_name }}
+      #   run: |
+      #     echo "### Create Release"
+      #     chmod +x .github/workflows/build-and-push/publish_release.py
+      #     .github/workflows/build-and-push/publish_release.py
+      # - name: Upload release assets
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #     VERSION: ${{ steps.version.outputs.full_version }}
+      #     IMAGE_NAME: ${{ inputs.image_name }}
+      #     PROJECT_NAME: ${{ inputs.project_name }}
+      #   working-directory: repo
+      #   run: |
+      #     echo "### Upload release assets"
+      #     chmod +x .github/workflows/build-and-push/upload_release_assets.py
+      #     .github/workflows/build-and-push/upload_release_assets.py
+      # - name: Tag and push additional tags
+      #   working-directory: repo
+      #   env:
+      #     IMAGE_TAG: ${{ steps.meta.outputs.sha_tag }}
+      #     ADDITIONAL_TAGS: ${{ steps.meta.outputs.tags }}
+      #   run: |
+      #     echo "### Tag and push additional tags"
+      #     IFS=',' read -ra TAGS <<< "$ADDITIONAL_TAGS"
+      #     for TAG in "${TAGS[@]}"; do
+      #       TAG=$(echo $TAG | xargs)
+      #       if [ "$TAG" != "$IMAGE_TAG" ]; then
+      #         echo "Creating manifest and pushing: $TAG"
+      #         docker buildx imagetools create -t "$TAG" "$IMAGE_TAG"
+      #       fi
+      #     done
