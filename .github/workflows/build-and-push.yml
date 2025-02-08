@@ -96,7 +96,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
-          pip install requests
+          pip install --break-system-packages requests
           chmod +x .github/workflows/build-and-push/update_version.py
           .github/workflows/build-and-push/update_version.py
       - name: Set up QEMU
