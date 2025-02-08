@@ -48,8 +48,8 @@ def generate_sbom():
     """Generate SBOM using sbominify Docker container."""
     try:
         image_tag = os.environ['IMAGE_TAG']
-        output_dir = f'{os.getcwd()}/{get_output_directory_name()}'
-        
+        output_dir = Path(f'{os.getcwd()}/{get_output_directory_name()}')
+
         sbom_cmd = [
             'docker', 'run', '--rm',
             '-e', f'IMAGES={image_tag}',
@@ -61,13 +61,13 @@ def generate_sbom():
             '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
             'ghcr.io/dockforge/sbominify:latest'
         ]
-        
+
         # Log the environment variables and command
         logger.info(f"IMAGE_TAG: {image_tag}")
         logger.info(f"sbom_cmd: {sbom_cmd}")
         subprocess.run(sbom_cmd, check=True)
         logger.info("Successfully generated SBOM")
-        
+
         # Log the location of the generated SBOMs
         sbom_files = list(output_dir.glob('*'))
         for sbom_file in sbom_files:
