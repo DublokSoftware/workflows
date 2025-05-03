@@ -95,4 +95,19 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    import time
+
+    def retry_main(max_retries=3, delay=2):
+        for attempt in range(max_retries):
+            try:
+                main()
+                break
+            except Exception as e:
+                # Retry on any Exception, especially for transient CLI errors
+                logger.warning(f"Retrying due to error: {e} (attempt {attempt+1}/{max_retries})")
+                time.sleep(delay)
+        else:
+            logger.error(f"Failed after {max_retries} attempts.")
+            sys.exit(1)
+
+    retry_main(max_retries=3, delay=2)
