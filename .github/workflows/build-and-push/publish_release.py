@@ -95,7 +95,8 @@ class GitHubReleaseManager:
     def get_version_file_content(self) -> Dict:
         """Get and parse version file content"""
         version_file = self.get_version_file_name()
-        response = self._make_request('GET', f"contents/{version_file}")
+        endpoint = f"contents/{version_file}?ref={self.branch}"
+        response = self._make_request('GET', endpoint)
         
         if response.status_code == 404:
             raise GitHubAPIError(f"Version file {version_file} not found")
