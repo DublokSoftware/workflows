@@ -246,8 +246,8 @@ jobs:
           PROJECT_NAME: ${{ inputs.project_name }}
         run: |
           echo "### Create Release"
-          chmod +x .github/workflows/build-and-push/publish_release.py
-          .github/workflows/build-and-push/publish_release.py
+          chmod +x ../workflows/.github/workflows/build-and-push/publish_release.py
+          ../workflows/.github/workflows/build-and-push/publish_release.py
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -257,8 +257,8 @@ jobs:
         working-directory: repo
         run: |
           echo "### Upload release assets"
-          chmod +x .github/workflows/build-and-push/upload_release_assets.py
-          .github/workflows/build-and-push/upload_release_assets.py
+          chmod +x ../workflows/.github/workflows/build-and-push/upload_release_assets.py
+          ../workflows/.github/workflows/build-and-push/upload_release_assets.py
       - name: Tag and push additional tags
         working-directory: repo
         env:
