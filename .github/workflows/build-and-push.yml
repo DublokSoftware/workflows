@@ -79,6 +79,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.ref }}
           path: repo
       - name: Checkout workflow repository
         uses: actions/checkout@v4
