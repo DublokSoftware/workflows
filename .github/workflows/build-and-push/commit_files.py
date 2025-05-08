@@ -63,18 +63,19 @@ def get_version_data(branch: str) -> Optional[Dict]:
         logger.error(f"Failed to read version file: {e}")
     return None
 
-def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_path: str, commit_message: str) -> bool:
-    """Update or create a file in GitHub repository using the API."""
+def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_path: str, commit_message: str, branch: str) -> bool:
+    """Update or create a file in GitHub repository using the API, targeting the specified branch."""
     try:
         url = f'https://api.github.com/repos/{github_repo}/contents/{github_path}'
         # Read file content
         with open(file_path, 'rb') as f:
             content = base64.b64encode(f.read()).decode()
         # Check if file exists
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, params={'ref': branch})
         data = {
             'message': commit_message,
             'content': content,
+            'branch': branch,
         }
         if response.status_code == 200:
             # File exists, include its SHA
@@ -82,14 +83,14 @@ def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_
         # Create or update file
         response = requests.put(url, headers=headers, json=data)
         response.raise_for_status()
-        logger.info(f"Successfully updated {github_path}")
+        logger.info(f"Successfully updated {github_path} on branch {branch}")
         return True
     except Exception as e:
-        logger.error(f"Failed to update {github_path}: {e}")
+        logger.error(f"Failed to update {github_path} on branch {branch}: {e}")
         return False
 
 def commit_files(version: str, branch: str) -> bool:
-    """Commit all generated files to the repository."""
+    """Commit all generated files to the repository, targeting a specific branch."""
     try:
         github_token = os.environ['GITHUB_TOKEN']
         github_repo = os.environ['GITHUB_REPOSITORY']
@@ -107,7 +108,7 @@ def commit_files(version: str, branch: str) -> bool:
             'Accept': 'application/vnd.github.v3+json'
         }
         commit_message = f"Update version files for {version_data['version']}"
-        logger.info(f"Committing files with version: {version_data['version']}")
+        logger.info(f"Committing files with version: {version_data['version']} to branch {branch}")
 
         # First organize files
         setup_directories()
@@ -126,8 +127,8 @@ def commit_files(version: str, branch: str) -> bool:
         success = True
         for local_path, github_path in files_to_commit:
             if local_path.exists():
-                logger.info(f"Committing file: {local_path} to {github_path}")
-                if not update_github_file(headers, github_repo, local_path, github_path, commit_message):
+                logger.info(f"Committing file: {local_path} to {github_path} on branch {branch}")
+                if not update_github_file(headers, github_repo, local_path, github_path, commit_message, branch):
                     success = False
             else:
                 logger.warning(f"File not found: {local_path}")
