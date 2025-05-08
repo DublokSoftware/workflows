@@ -63,34 +63,110 @@ def get_version_data(branch: str) -> Optional[Dict]:
         logger.error(f"Failed to read version file: {e}")
     return None
 
-def update_github_file(headers: Dict, github_repo: str, file_path: Path, github_path: str, commit_message: str, branch: str) -> bool:
-    """Update or create a file in GitHub repository using the API, targeting the specified branch."""
+def commit_multiple_files_github_api(headers: Dict, github_repo: str, files_to_commit, commit_message: str, branch: str) -> bool:
+    """
+    Commit multiple files in a single commit using the GitHub Git Data API.
+    """
     try:
-        url = f'https://api.github.com/repos/{github_repo}/contents/{github_path}'
-        # Read file content
-        with open(file_path, 'rb') as f:
-            content = base64.b64encode(f.read()).decode()
-        # Check if file exists
-        response = requests.get(url, headers=headers, params={'ref': branch})
-        data = {
-            'message': commit_message,
-            'content': content,
-            'branch': branch,
+        # 1. Get the latest commit SHA of the branch
+        ref_url = f'https://api.github.com/repos/{github_repo}/git/refs/heads/{branch}'
+        ref_resp = requests.get(ref_url, headers=headers)
+        if ref_resp.status_code != 200:
+            logger.error(f"Failed to get ref for branch {branch}: {ref_resp.text}")
+            return False
+        latest_commit_sha = ref_resp.json()["object"]["sha"]
+
+        # 2. Get the tree SHA from the latest commit
+        commit_url = f'https://api.github.com/repos/{github_repo}/git/commits/{latest_commit_sha}'
+        commit_resp = requests.get(commit_url, headers=headers)
+        if commit_resp.status_code != 200:
+            logger.error(f"Failed to get latest commit info: {commit_resp.text}")
+            return False
+        base_tree_sha = commit_resp.json()["tree"]["sha"]
+
+        # 3. Create blobs for each file
+        blob_sha_paths = []
+        for local_path, github_path in files_to_commit:
+            with open(local_path, 'rb') as f:
+                content_bytes = f.read()
+            is_binary = b'\0' in content_bytes
+            if is_binary:
+                # For binaries (such as .tar), must base64 encode and set encoding
+                content = base64.b64encode(content_bytes).decode()
+                blob_req = {
+                    "content": content,
+                    "encoding": "base64"
+                }
+            else:
+                try:
+                    content = content_bytes.decode('utf-8')
+                    blob_req = {
+                        "content": content,
+                        "encoding": "utf-8"
+                    }
+                except UnicodeDecodeError:
+                    content = base64.b64encode(content_bytes).decode()
+                    blob_req = {
+                        "content": content,
+                        "encoding": "base64"
+                    }
+            url = f"https://api.github.com/repos/{github_repo}/git/blobs"
+            blob_resp = requests.post(url, headers=headers, json=blob_req)
+            if blob_resp.status_code not in (201, 200):
+                logger.error(f"Failed to create blob for {github_path}: {blob_resp.text}")
+                return False
+            blob_sha = blob_resp.json()["sha"]
+            blob_sha_paths.append({
+                "path": github_path,
+                "mode": "100644",
+                "type": "blob",
+                "sha": blob_sha
+            })
+
+        # 4. Create a new tree
+        tree_url = f"https://api.github.com/repos/{github_repo}/git/trees"
+        tree_req = {
+            "base_tree": base_tree_sha,
+            "tree": blob_sha_paths
         }
-        if response.status_code == 200:
-            # File exists, include its SHA
-            data['sha'] = response.json()['sha']
-        # Create or update file
-        response = requests.put(url, headers=headers, json=data)
-        response.raise_for_status()
-        logger.info(f"Successfully updated {github_path} on branch {branch}")
+        tree_resp = requests.post(tree_url, headers=headers, json=tree_req)
+        if tree_resp.status_code not in (201, 200):
+            logger.error(f"Failed to create tree: {tree_resp.text}")
+            return False
+        new_tree_sha = tree_resp.json()["sha"]
+
+        # 5. Create a new commit object
+        commit_req = {
+            "message": commit_message,
+            "tree": new_tree_sha,
+            "parents": [latest_commit_sha]
+        }
+        new_commit_url = f"https://api.github.com/repos/{github_repo}/git/commits"
+        new_commit_resp = requests.post(new_commit_url, headers=headers, json=commit_req)
+        if new_commit_resp.status_code not in (201, 200):
+            logger.error(f"Failed to create commit: {new_commit_resp.text}")
+            return False
+        new_commit_sha = new_commit_resp.json()["sha"]
+
+        # 6. Update branch reference to point to new commit
+        update_ref_url = f"https://api.github.com/repos/{github_repo}/git/refs/heads/{branch}"
+        update_req = {
+            "sha": new_commit_sha,
+            "force": False
+        }
+        update_ref_resp = requests.patch(update_ref_url, headers=headers, json=update_req)
+        if update_ref_resp.status_code not in (201, 200):
+            logger.error(f"Failed to update ref: {update_ref_resp.text}")
+            return False
+
+        logger.info(f"Successfully committed all files in a single commit to branch {branch}")
         return True
     except Exception as e:
-        logger.error(f"Failed to update {github_path} on branch {branch}: {e}")
+        logger.error(f"Failed to commit multiple files: {e}")
         return False
 
 def commit_files(version: str, branch: str) -> bool:
-    """Commit all generated files to the repository, targeting a specific branch."""
+    """Commit all generated files to the repository in a single commit, targeting a specific branch."""
     try:
         github_token = os.environ['GITHUB_TOKEN']
         github_repo = os.environ['GITHUB_REPOSITORY']
@@ -124,14 +200,17 @@ def commit_files(version: str, branch: str) -> bool:
              f'.version_{project_name}_{branch}.json' if project_name else f'.version_{branch}.json'),
         ]
 
-        success = True
-        for local_path, github_path in files_to_commit:
-            if local_path.exists():
-                logger.info(f"Committing file: {local_path} to {github_path} on branch {branch}")
-                if not update_github_file(headers, github_repo, local_path, github_path, commit_message, branch):
-                    success = False
-            else:
-                logger.warning(f"File not found: {local_path}")
+        # Only commit files that exist
+        files_to_really_commit = [(lp, gp) for lp, gp in files_to_commit if lp.exists()]
+        for lp, gp in files_to_commit:
+            if not lp.exists():
+                logger.warning(f"File not found: {lp}")
+
+        if not files_to_really_commit:
+            logger.warning("No files to commit.")
+            return False
+
+        success = commit_multiple_files_github_api(headers, github_repo, files_to_really_commit, commit_message, branch)
         return success
     except Exception as e:
         logger.error(f"Failed to commit files: {e}")
