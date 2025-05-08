@@ -230,6 +230,14 @@ jobs:
           echo "### Commit generated files"
           chmod +x .github/workflows/build-and-push/commit_files.py
           .github/workflows/build-and-push/commit_files.py
+
+      - name: Checkout updated branch for release and artifacts
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          path: repo
+          fetch-depth: 1
+
       - name: Create Release
         id: release
         working-directory: repo
