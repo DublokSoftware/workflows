@@ -56,14 +56,33 @@ def upload_release_assets(version: str, image_name: str):
         # Construct version with optional prefix
         versioned_tag = f"{paths['version_prefix']}{version}"
 
-        # Prepare the upload command
-        upload_cmd = [
-            'gh', 'release', 'upload', versioned_tag,
-            f"../{image_name}.tar",
-            paths['sbom_json'],
-            paths['sbom_txt'],
-            paths['vuln_report_no_dot']
+        # Define all potential assets
+        all_assets = [
+            (f"../{image_name}.tar", True),  # (path, required)
+            (paths['sbom_json'], False),
+            (paths['sbom_txt'], False),
+            (paths['vuln_report_no_dot'], False)
         ]
+        
+        # Filter to only existing files
+        existing_assets = []
+        for asset_path, required in all_assets:
+            if Path(asset_path).exists():
+                existing_assets.append(asset_path)
+                logger.info(f"Found asset: {asset_path}")
+            else:
+                if required:
+                    logger.error(f"Required asset not found: {asset_path}")
+                    raise FileNotFoundError(f"Required asset not found: {asset_path}")
+                else:
+                    logger.warning(f"Optional asset not found: {asset_path}")
+
+        if not existing_assets:
+            logger.error("No assets found to upload")
+            raise FileNotFoundError("No assets found to upload")
+
+        # Prepare the upload command
+        upload_cmd = ['gh', 'release', 'upload', versioned_tag] + existing_assets
 
         # Log the upload command
         logger.info(f"Uploading release assets for version {versioned_tag} with command: {upload_cmd}")
