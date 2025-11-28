@@ -44,39 +44,66 @@ def docker_login():
         logger.error(f"Failed to login to GitHub Container Registry: {e}")
         raise
 
+def is_docker_in_docker():
+    """
+    Detect if we're running inside a Docker container (Docker-in-Docker).
+    In DinD environments, volume mounts from the runner don't work as expected
+    because they mount from the Docker daemon's host, not from the runner container.
+    """
+    # Check for /.dockerenv file (present inside Docker containers)
+    if Path('/.dockerenv').exists():
+        return True
+    # Check cgroup for docker/container indicators
+    try:
+        with open('/proc/1/cgroup', 'r') as f:
+            return 'docker' in f.read() or 'containerd' in f.read()
+    except (FileNotFoundError, PermissionError):
+        pass
+    return False
+
+
 def generate_sbom():
     """Generate SBOM using sbominify Docker container."""
     try:
         image_tag = os.environ['IMAGE_TAG']
         output_dir = Path(f'{os.getcwd()}/{get_output_directory_name()}')
         output_dir_str = str(output_dir.resolve())
-
-        # First try to generate SBOM using Docker volume mount
-        sbom_cmd = [
-            'docker', 'run', '--rm',
-            '-e', f'IMAGES={image_tag}',
-            '-e', 'FILE_PREFIX=',
-            '-e', 'FILE_SUFFIX=',
-            '-e', 'FILE_NAME=sbom',
-            '-v', '/var/run/docker.sock:/var/run/docker.sock',
-            '-v', f'{output_dir_str}:/output',
-            '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
-            'ghcr.io/dockforge/sbominify:latest'
-        ]
-
-        # Log the environment variables and command
-        logger.info(f"IMAGE_TAG: {image_tag}")
-        logger.info(f"sbom_cmd: {sbom_cmd}")
-        subprocess.run(sbom_cmd, check=True)
         
-        # Check if files were created (Docker-in-Docker might have issues with volume mounts)
+        logger.info(f"IMAGE_TAG: {image_tag}")
+        
+        # Check if we're in a Docker-in-Docker environment
+        use_docker_cp = is_docker_in_docker()
+        if use_docker_cp:
+            logger.info("Detected Docker-in-Docker environment, using docker cp method")
+        
         sbom_json = output_dir / 'sbom.json'
         sbom_txt = output_dir / 'sbom.txt'
         
-        if not sbom_json.exists() or not sbom_txt.exists():
-            logger.warning("SBOM files not found after Docker run. Trying alternative method with docker cp...")
+        if not use_docker_cp:
+            # Try volume mount approach first (works in standard environments)
+            sbom_cmd = [
+                'docker', 'run', '--rm',
+                '-e', f'IMAGES={image_tag}',
+                '-e', 'FILE_PREFIX=',
+                '-e', 'FILE_SUFFIX=',
+                '-e', 'FILE_NAME=sbom',
+                '-v', '/var/run/docker.sock:/var/run/docker.sock',
+                '-v', f'{output_dir_str}:/output',
+                '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
+                'ghcr.io/dockforge/sbominify:latest'
+            ]
+            logger.info(f"sbom_cmd: {sbom_cmd}")
+            subprocess.run(sbom_cmd, check=True)
             
-            # Alternative approach: run container, copy files out
+            # Check if files were created
+            if sbom_json.exists() and sbom_txt.exists():
+                logger.info("Successfully generated SBOM using volume mount")
+            else:
+                logger.warning("SBOM files not found after Docker run, falling back to docker cp method")
+                use_docker_cp = True
+        
+        if use_docker_cp:
+            # Use docker cp approach (works in Docker-in-Docker environments)
             container_name = f"sbom-gen-{os.getpid()}"
             alt_cmd = [
                 'docker', 'run', '--name', container_name,
@@ -88,7 +115,7 @@ def generate_sbom():
                 '-v', f'{os.environ["HOME"]}/.docker/config.json:/root/.docker/config.json:ro',
                 'ghcr.io/dockforge/sbominify:latest'
             ]
-            logger.info(f"Running alternative SBOM generation: {alt_cmd}")
+            logger.info(f"Running SBOM generation with docker cp: {alt_cmd}")
             subprocess.run(alt_cmd, check=True)
             
             # Copy files from container
