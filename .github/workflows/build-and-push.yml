@@ -126,6 +126,61 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Determine cache configuration
+        id: cache
+        run: |
+          echo "### Determine cache configuration"
+          if [ "${{ inputs.push_to_ghcr }}" == "true" ]; then
+            echo "Using GitHub Actions cache (push_to_ghcr=true)"
+            echo "cache_from=type=gha" >> $GITHUB_OUTPUT
+            echo "cache_to=type=gha,mode=max" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.push_to_dockerhub }}" == "true" ]; then
+            echo "Using Docker Hub registry cache (push_to_dockerhub=true, push_to_ghcr=false)"
+            
+            # Parse platforms and generate per-platform cache tags
+            PLATFORMS="${{ inputs.platforms }}"
+            REGISTRY_REF="${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}"
+            
+            # Generate cache-from for all platforms (read from all available caches)
+            CACHE_FROM=""
+            for PLATFORM in $(echo "$PLATFORMS" | tr ',' '\n'); do
+              # Convert linux/amd64 -> amd64, linux/arm64 -> arm64, linux/arm/v7 -> armv7
+              PLATFORM_TAG=$(echo "$PLATFORM" | sed 's|linux/||' | sed 's|/|-|g')
+              if [ -n "$CACHE_FROM" ]; then
+                CACHE_FROM="${CACHE_FROM}
+            type=registry,ref=${REGISTRY_REF}:buildcache-${PLATFORM_TAG}"
+              else
+                CACHE_FROM="type=registry,ref=${REGISTRY_REF}:buildcache-${PLATFORM_TAG}"
+              fi
+            done
+            
+            # Generate cache-to for all platforms (write to all, last writer wins per tag)
+            CACHE_TO=""
+            for PLATFORM in $(echo "$PLATFORMS" | tr ',' '\n'); do
+              PLATFORM_TAG=$(echo "$PLATFORM" | sed 's|linux/||' | sed 's|/|-|g')
+              if [ -n "$CACHE_TO" ]; then
+                CACHE_TO="${CACHE_TO}
+            type=registry,ref=${REGISTRY_REF}:buildcache-${PLATFORM_TAG},mode=max"
+              else
+                CACHE_TO="type=registry,ref=${REGISTRY_REF}:buildcache-${PLATFORM_TAG},mode=max"
+              fi
+            done
+            
+            echo "cache_from<<EOF" >> $GITHUB_OUTPUT
+            echo "$CACHE_FROM" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            echo "cache_to<<EOF" >> $GITHUB_OUTPUT
+            echo "$CACHE_TO" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+            
+            echo "Cache from: $CACHE_FROM"
+            echo "Cache to: $CACHE_TO"
+          else
+            echo "No remote cache configured (no push targets enabled)"
+            echo "cache_from=" >> $GITHUB_OUTPUT
+            echo "cache_to=" >> $GITHUB_OUTPUT
+          fi
       - name: Generate Docker Tags
         id: meta
         working-directory: repo
@@ -153,8 +208,8 @@ jobs:
             org.opencontainers.image.title=${{ inputs.image_name }}
             org.opencontainers.image.version=${{ steps.version.outputs.full_version }}
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: ${{ steps.cache.outputs.cache_from }}
+          cache-to: ${{ steps.cache.outputs.cache_to }}
           build-args: |
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             BUILD_DATE=${{ github.event.repository.updated_at }}
