@@ -305,7 +305,7 @@ jobs:
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.version.outputs.full_version }}
+          VERSION: ${{ steps.release.outputs.version }}
           IMAGE_NAME: ${{ inputs.image_name }}
           PROJECT_NAME: ${{ inputs.project_name }}
         working-directory: repo
