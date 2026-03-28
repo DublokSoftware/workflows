@@ -139,7 +139,7 @@ jobs:
             
             # Parse platforms and generate per-platform cache tags
             PLATFORMS="${{ inputs.platforms }}"
-            REGISTRY_REF="${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}"
+            REGISTRY_REF=$(echo "${{ secrets.DOCKER_USERNAME }}/${{ inputs.image_name }}" | tr '[:upper:]' '[:lower:]')
             
             # Generate cache-from for all platforms (read from all available caches)
             CACHE_FROM=""
